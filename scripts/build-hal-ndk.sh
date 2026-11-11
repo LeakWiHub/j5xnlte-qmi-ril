@@ -29,7 +29,7 @@ for p in $PKGS; do
       "${INC[@]}" -o "$OUT/gen" -h "$OUT/inc" "${files[@]}"
 done
 
-CFLAGS_COMMON=(-O2 -fPIE -Wall -Wno-unused-parameter -D__ANDROID_VENDOR__ -DANDROID_STRICT)
+CFLAGS_COMMON=(-O2 -fPIE -Wall -Wno-unused-parameter -D__ANDROID_VENDOR__ -DANDROID_STRICT -Wno-deprecated-declarations)
 INCS=(-I"$OUT/inc" -I"$HERE/qmi/include" -I"$HERE/ril/core" -I"$HERE/hal/src" -I"$HERE/hal/gen")
 SHIM=(-idirafter "$HERE/tools/ndk-shim")
 objs=()

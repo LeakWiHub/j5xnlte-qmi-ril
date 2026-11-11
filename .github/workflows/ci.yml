@@ -53,6 +53,7 @@ jobs:
           echo "SDK=$SDK" >> "$GITHUB_ENV"
           "$SDK/build-tools/35.0.0/aidl" --help 2>&1 | head -30
       - name: Build the HAL
+        shell: bash   # = bash -eo pipefail: a failing build must fail the step even through "| tee"
         run: |
           bash scripts/build-hal-ndk.sh "$SDK/ndk/27.2.12479018" "$SDK/build-tools/35.0.0/aidl" \
             "$RUNNER_TEMP/hi/radio/aidl/aidl_api" build/hal-ndk 2>&1 | tee hal-build.log
