@@ -1,0 +1,11 @@
+j5xnlte-qmi-ril - собственный код проекта: Apache-2.0 (см. LICENSE, SPDX-заголовки в файлах).
+
+Код сторонних проектов в этот архив НЕ скопирован. Использовались только как справочный материал
+(чтение и сверка форматов сообщений):
+  - TB-X505X-Labs/android_external_qrild, android_external_libqril (lineage-24.0): лицензионного файла
+    в репозиториях нет; в radio.cc указан SPDX Apache-2.0
+  - aospm/qrild, aospm/libqril: лицензионного файла в репозиториях нет
+  - aospm/qrtr: BSD-стиль, (c) 2015 Sony Mobile Communications Inc.
+  - aospm/qmic: BSD-стиль, (c) 2016 Linaro Ltd
+  - LineageOS/android_hardware_interfaces, android_frameworks_native (lineage-23.0): Apache-2.0
+Сверочные кадры в tests/test_codec.c взяты из notes/dev-notes.md репозитория TB-X505X qrild.

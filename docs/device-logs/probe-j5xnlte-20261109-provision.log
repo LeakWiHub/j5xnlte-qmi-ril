@@ -1,0 +1,395 @@
+# cd
+# unzip /sdcard/Download/LocalSend\ Kotlin/j5xnlte-qmi-ril.zip                                              Archive:  /sdcard/Download/LocalSend Kotlin/j5xnlte-qmi-ril.zip
+   creating: j5xnlte-qmi-ril/
+   creating: j5xnlte-qmi-ril/hal/
+   creating: j5xnlte-qmi-ril/hal/src/
+  inflating: j5xnlte-qmi-ril/hal/src/hal_common.cc
+  inflating: j5xnlte-qmi-ril/hal/src/radio_net.cc
+  inflating: j5xnlte-qmi-ril/hal/src/response_info.h
+  inflating: j5xnlte-qmi-ril/hal/src/radio_core.cc
+  inflating: j5xnlte-qmi-ril/hal/src/main.cpp
+  inflating: j5xnlte-qmi-ril/hal/src/radio_impl.h
+   creating: j5xnlte-qmi-ril/hal/gen/
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioDataBase.h
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioModemBase.h 
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioMessagingBase.h
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioVoiceBase.h 
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioNetworkBase.h
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioConfigBase.h
+  inflating: j5xnlte-qmi-ril/hal/gen/RadioSimBase.h
+   creating: j5xnlte-qmi-ril/.github/
+   creating: j5xnlte-qmi-ril/.github/workflows/
+  inflating: j5xnlte-qmi-ril/.github/workflows/ci.yml 
+  inflating: j5xnlte-qmi-ril/NOTICE
+  inflating: j5xnlte-qmi-ril/LICENSE
+   creating: j5xnlte-qmi-ril/scripts/
+  inflating: j5xnlte-qmi-ril/scripts/run-tests.sh
+  inflating: j5xnlte-qmi-ril/scripts/run-glue-test.sh 
+  inflating: j5xnlte-qmi-ril/scripts/push-probe.sh
+  inflating: j5xnlte-qmi-ril/scripts/run-all-tests.sh 
+   creating: j5xnlte-qmi-ril/scripts/device/
+  inflating: j5xnlte-qmi-ril/scripts/device/j5ril-device.sh
+  inflating: j5xnlte-qmi-ril/scripts/install.sh
+  inflating: j5xnlte-qmi-ril/scripts/run-hal-test.sh
+  inflating: j5xnlte-qmi-ril/scripts/run-real-frames-test.sh
+  inflating: j5xnlte-qmi-ril/scripts/build-probe.sh
+  inflating: j5xnlte-qmi-ril/DEPENDENCIES.md
+   creating: j5xnlte-qmi-ril/tests/
+  inflating: j5xnlte-qmi-ril/tests/test_ril_glue.c
+   creating: j5xnlte-qmi-ril/tests/hal/
+  inflating: j5xnlte-qmi-ril/tests/hal/test_hal.cc
+  inflating: j5xnlte-qmi-ril/tests/hal/recorder.h
+  inflating: j5xnlte-qmi-ril/tests/test_codec.c
+  inflating: j5xnlte-qmi-ril/tests/test_ril_real.c
+   creating: j5xnlte-qmi-ril/tests/install/
+  inflating: j5xnlte-qmi-ril/tests/install/test_install.sh
+  inflating: j5xnlte-qmi-ril/tests/install/fake_adb.sh
+  inflating: j5xnlte-qmi-ril/tests/test_transport.c
+   creating: j5xnlte-qmi-ril/tests/fake_modem/
+  inflating: j5xnlte-qmi-ril/tests/fake_modem/replay_real.py
+  inflating: j5xnlte-qmi-ril/tests/fake_modem/fake_modem.py
+  inflating: j5xnlte-qmi-ril/tests/fake_modem/fake_ril_modem.py
+   creating: j5xnlte-qmi-ril/android/
+   creating: j5xnlte-qmi-ril/android/permissions/
+  inflating: j5xnlte-qmi-ril/android/permissions/android.hardware.telephony.j5xnlte.xml
+   creating: j5xnlte-qmi-ril/android/vintf/
+  inflating: j5xnlte-qmi-ril/android/vintf/android.hardware.radio.j5xnlte-qmi.xml
+  inflating: j5xnlte-qmi-ril/android/init.j5xnlte-modem-modules.rc
+  inflating: j5xnlte-qmi-ril/android/init.j5xnlte-ril.rc.in
+  inflating: j5xnlte-qmi-ril/android/ueventd.rc.fragment
+  inflating: j5xnlte-qmi-ril/android/j5xnlte_ril.mk
+   creating: j5xnlte-qmi-ril/android/sepolicy/
+  inflating: j5xnlte-qmi-ril/android/sepolicy/file_contexts
+  inflating: j5xnlte-qmi-ril/android/sepolicy/service_contexts
+  inflating: j5xnlte-qmi-ril/android/sepolicy/j5qmi_ril.te
+  inflating: j5xnlte-qmi-ril/android/init.j5xnlte-ril.rc
+  inflating: j5xnlte-qmi-ril/Android.bp
+   creating: j5xnlte-qmi-ril/prebuilt/
+  inflating: j5xnlte-qmi-ril/prebuilt/qmi-probe-aarch64
+   creating: j5xnlte-qmi-ril/tools/
+   creating: j5xnlte-qmi-ril/tools/aidl-mock/
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/gen_aidl_headers.py
+   creating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/
+   creating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/sys/
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/sys/system_properties.h
+   creating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/android/
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/android/binder_process.h
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/android/log.h
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/android/binder_auto_utils.h
+  inflating: j5xnlte-qmi-ril/tools/aidl-mock/mock-ndk/android/binder_manager.h
+   creating: j5xnlte-qmi-ril/tools/gen-hal-base/
+  inflating: j5xnlte-qmi-ril/tools/gen-hal-base/gen_hal_base.py
+  inflating: j5xnlte-qmi-ril/tools/gen-hal-base/regen.sh
+   creating: j5xnlte-qmi-ril/tools/qmi-probe/
+  inflating: j5xnlte-qmi-ril/tools/qmi-probe/qmi_probe.c
+   creating: j5xnlte-qmi-ril/tools/qmi-probe/stub/
+  inflating: j5xnlte-qmi-ril/tools/qmi-probe/stub/string.h
+   creating: j5xnlte-qmi-ril/ril/
+   creating: j5xnlte-qmi-ril/ril/core/
+  inflating: j5xnlte-qmi-ril/ril/core/ril_internal.h
+  inflating: j5xnlte-qmi-ril/ril/core/ril_svc_ext.c
+  inflating: j5xnlte-qmi-ril/ril/core/ril_qmi.h
+  inflating: j5xnlte-qmi-ril/ril/core/ril_core.c
+  inflating: j5xnlte-qmi-ril/ril/core/ril_svc_basic.c 
+   creating: j5xnlte-qmi-ril/docs/
+  inflating: j5xnlte-qmi-ril/docs/AUDIT_RU.md
+   creating: j5xnlte-qmi-ril/docs/device-logs/
+  inflating: j5xnlte-qmi-ril/docs/device-logs/probe-j5xnlte-20261109-sim-still-detected.log
+  inflating: j5xnlte-qmi-ril/docs/device-logs/probe-j5xnlte-20261105.log
+  inflating: j5xnlte-qmi-ril/docs/device-logs/probe-j5xnlte-20261109-sim-detected.log
+  inflating: j5xnlte-qmi-ril/docs/device-logs/probe-j5xnlte-20261109-online.log
+  inflating: j5xnlte-qmi-ril/docs/device-logs/probe-j5xnlte-20261109-online-searching.log
+   creating: j5xnlte-qmi-ril/qmi/
+   creating: j5xnlte-qmi-ril/qmi/src/
+  inflating: j5xnlte-qmi-ril/qmi/src/qmi_codec.c
+  inflating: j5xnlte-qmi-ril/qmi/src/qmi_dev.c
+  inflating: j5xnlte-qmi-ril/qmi/src/qmi_log.c
+   creating: j5xnlte-qmi-ril/qmi/include/
+   creating: j5xnlte-qmi-ril/qmi/include/qmi/
+  inflating: j5xnlte-qmi-ril/qmi/include/qmi/qmi_dev.h
+  inflating: j5xnlte-qmi-ril/qmi/include/qmi/qmi_codec.h
+  inflating: j5xnlte-qmi-ril/README_RU.md
+# cd j5xnlte-qmi-ril/prebuilt/                        # ls
+qmi-probe-aarch64
+# ./qmi-probe-aarch64
+qmi-probe: device /dev/wwan0qmi0
+
+  [OK]   open(/dev/wwan0qmi0) fd=3
+STAGE 1 PASS: QMUX device opens
+
+-- CTL
+    TX 01:0B:00:00:00:00:00:01:21:00:00:00
+    RX 01:C0:00:80:00:00:01:01:21:00:B5:00:02:04:00:00:00:00:00:01:AB:00:22:00:01:00:05:00:01:01:00:24:00:02:01:00:0E:00:03:01:00:19:00:04:01:00:06:00:05:01:00:0A:00:07:01:00:03:00:08:01:00:02:00:09:02:00:01:00:0A:02:00:18:00:0B:01:00:24:00:0C:01:00:04:00:0F:01:00:00:00:10:02:00:00:00:11:01:00:...
+  [OK]   CTL get version info
+         services reported by the modem: 34
+           CTL (0x00) v1.5
+           WDS (0x01) v1.36
+           DMS (0x02) v1.14
+           NAS (0x03) v1.25
+           QOS (0x04) v1.6
+           WMS (0x05) v1.10
+           AUTH (0x07) v1.3
+           AT (0x08) v1.2
+           VOICE (0x09) v2.1
+           CAT2 (0x0a) v2.24
+           UIM (0x0b) v1.36
+           PBM (0x0c) v1.4
+           ? (0x0f) v1.0
+           LOC (0x10) v2.0
+           SAR (0x11) v1.0
+           ? (0x17) v1.0
+           ? (0x18) v1.0
+           WDA (0x1a) v1.11
+           ? (0x1d) v1.1
+           COEX (0x22) v1.0
+           PDC (0x24) v1.0
+           ? (0x29) v1.0
+           DSD (0x2a) v1.0
+           ? (0x2b) v1.0
+           ? (0x2e) v1.0
+           ? (0x30) v1.0
+           ? (0x36) v1.0
+           ? (0xe3) v0.0
+           ? (0xe4) v0.0
+           ? (0xe5) v0.0
+           ? (0xe6) v0.0
+           ? (0xe7) v0.0
+           ? (0xe8) v1.0
+           ? (0xea) v0.0
+    TX 01:0F:00:00:00:00:00:02:22:00:04:00:01:01:00:02
+    RX 01:17:00:80:00:00:01:02:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+  [OK]   CTL allocate CID
+         service DMS -> client id 1
+    TX 01:0F:00:00:00:00:00:03:22:00:04:00:01:01:00:03
+    RX 01:17:00:80:00:00:01:03:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+  [OK]   CTL allocate CID
+         service NAS -> client id 1
+    TX 01:0F:00:00:00:00:00:04:22:00:04:00:01:01:00:0B
+    RX 01:17:00:80:00:00:01:04:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+  [OK]   CTL allocate CID
+         service UIM -> client id 1
+         QMUX flags byte seen on modem->host frames: 0x80 (as expected for QMUX)
+STAGE 2 PASS: CTL answers and allocates a DMS client id
+
+-- DMS
+    TX 01:0C:00:00:02:01:00:01:00:23:00:00:00
+    RX 01:5B:00:80:02:01:02:01:00:23:00:4F:00:02:04:00:00:00:00:00:01:45:00:4D:50:53:53:2E:44:50:4D:2E:32:2E:30:2E:32:2E:63:31:2E:37:2D:30:30:30:36:37:2D:4D:38:39:33:36:46:41:41:41:41:4E:55:5A:4D:2D:31:20:20:31:20:20:5B:4D:61:79:20:31:34:20:32:30:31:39:20:30:31:3A:30:30:3A:30:30:5D
+  [OK]   DMS get revision
+         revision: MPSS.DPM.2.0.2.c1.7-00067-M8936FAAAANUZM-1  1  [May 14 2019 01:00:00]
+    TX 01:0C:00:00:02:01:00:02:00:25:00:00:00
+    RX 01:45:00:80:02:01:02:02:00:25:00:39:00:02:04:00:00:00:00:00:13:01:00:31:12:0E:00:30:30:30:30:30:30:30:30:30:30:30:30:30:30:10:08:00:42:30:30:30:30:30:30:30:11:0F:00:33:35:30:30:30:30:30:30:30:30:30:30:30:30:38
+  [OK]   DMS get IDs
+         IMEI: 350000000000008
+         ESN: B0000000
+         MEID: 00000000000000
+         IMEI SV: 1
+    TX 01:0C:00:00:02:01:00:03:00:2D:00:00:00
+    RX 01:17:00:80:02:01:02:03:00:2D:00:0B:00:02:04:00:00:00:00:00:01:01:00:00
+  [OK]   DMS get operating mode
+         operating mode: 0 (online)
+STAGE 3 PASS: DMS returns modem identity
+
+-- UIM
+    TX 01:0C:00:00:0B:01:00:01:00:2F:00:00:00
+    RX 01:55:00:80:0B:01:02:01:00:2F:00:49:00:02:04:00:00:00:00:00:15:03:00:02:00:00:11:03:00:02:00:00:10:33:00:FF:FF:FF:FF:FF:FF:FF:FF:02:01:00:00:00:00:01:02:01:00:0B:00:00:10:A0:00:00:00:87:10:02:FF:47:F0:01:89:00:00:01:FF:00:00:00:00:00:00:00:02:00:00:00:03:00
+  [OK]   UIM get card status
+         slot 0: card_state=1 (present) upin_state=0 apps=1
+           app 0: type=2 (USIM) state=1 (detected) pin1_state=0
+         slot 1: card_state=2 (error) error_code=3 upin_state=0 apps=0
+STAGE 4 PASS: UIM reports card status (inspect the slot lines: absent/present is data, not a failure)
+
+-- NAS
+    TX 01:0C:00:00:03:01:00:01:00:24:00:00:00
+    RX 01:4B:00:80:03:01:02:01:00:24:00:3F:00:02:04:00:00:00:00:00:01:06:00:02:02:02:02:01:05:10:01:00:00:11:01:00:00:12:05:00:FA:00:63:00:00:15:03:00:01:05:00:21:05:00:01:03:00:00:00:26:02:00:A9:01:27:05:00:FA:00:63:00:00:28:01:00:00
+  [OK]   NAS get serving system
+         registration: searching cs_attach=2 ps_attach=2 radio_if_count=1
+    TX 01:0C:00:00:03:01:00:02:00:20:00:00:00
+    RX 01:18:00:80:03:01:02:02:00:20:00:0C:00:02:04:00:00:00:00:00:01:02:00:A2:05
+  [OK]   NAS get signal strength
+         signal: -94 dBm, radio_if=5
+STAGE 5 PASS: NAS answers (registered or not is reported above, it is not what this stage tests)
+
+-- extras (read-only, informational)
+    TX 01:0C:00:00:03:01:00:03:00:4F:00:00:00
+    RX 01:1E:00:80:03:01:02:03:00:4F:00:12:00:02:04:00:00:00:00:00:13:03:00:A2:0A:00:20:02:00:03:00
+  [OK]   NAS get signal info (0x4F)
+    TX 01:0C:00:00:03:01:00:04:00:34:00:00:00
+    RX 01:70:00:80:03:01:02:04:00:34:00:64:00:02:04:00:00:00:00:00:10:01:00:00:11:02:00:1C:00:12:08:00:FF:FF:FF:BF:FF:FF:FF:FF:14:02:00:FF:00:15:08:00:FF:3F:DF:5B:FF:07:00:00:16:01:00:00:18:04:00:02:00:00:00:19:04:00:02:00:00:00:1A:08:00:3F:00:00:00:00:00:00:00:1C:04:00:03:08:05:04:1D:04:00:00:...
+  [OK]   NAS get system selection preference (0x34)
+    TX 01:0F:00:00:00:00:00:05:22:00:04:00:01:01:00:09
+    RX 01:17:00:80:00:00:01:05:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:09:01
+  [OK]   CTL allocate CID
+         service VOICE -> client id 1
+    TX 01:0C:00:00:09:01:00:01:00:2F:00:00:00
+    RX 01:17:00:80:09:01:02:01:00:2F:00:0B:00:02:04:00:00:00:00:00:10:01:00:00
+  [OK]   VOICE get all call info (0x2F)
+    TX 01:10:00:00:00:00:00:06:23:00:05:00:01:02:00:09:01
+    RX 01:17:00:80:00:00:01:06:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:09:01
+    TX 01:0F:00:00:00:00:00:07:22:00:04:00:01:01:00:1A
+    RX 01:17:00:80:00:00:01:07:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:1A:01
+  [OK]   CTL allocate CID
+         service WDA -> client id 1
+    TX 01:0C:00:00:1A:01:00:01:00:21:00:00:00
+    RX 01:5D:00:80:1A:01:02:01:00:21:00:51:00:02:04:00:00:00:00:00:10:01:00:00:11:04:00:01:00:00:00:12:04:00:00:00:00:00:13:04:00:00:00:00:00:14:04:00:00:00:00:00:15:04:00:00:00:00:00:16:04:00:00:00:00:00:17:04:00:10:00:00:00:18:04:00:00:10:00:00:1A:04:00:00:00:00:00:19:04:00:01:00:00:00
+  [OK]   WDA get data format (0x21)
+    TX 01:10:00:00:00:00:00:08:23:00:05:00:01:02:00:1A:01
+    RX 01:17:00:80:00:00:01:08:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:1A:01
+
+    TX 01:10:00:00:00:00:00:09:23:00:05:00:01:02:00:0B:01
+    RX 01:17:00:80:00:00:01:09:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+    TX 01:10:00:00:00:00:00:0A:23:00:05:00:01:02:00:03:01
+    RX 01:17:00:80:00:00:01:0A:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+    TX 01:10:00:00:00:00:00:0B:23:00:05:00:01:02:00:02:01
+    RX 01:17:00:80:00:00:01:0B:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+==== SUMMARY (stages 1-5 of the readiness list; stages 6-12 need the HAL) ====
+  stage 1: PASS
+  stage 2: PASS
+  stage 3: PASS
+  stage 4: PASS
+  stage 5: PASS
+# ./qmi-probe-aarch64 --provision
+qmi-probe: device /dev/wwan0qmi0
+
+  [OK]   open(/dev/wwan0qmi0) fd=3
+STAGE 1 PASS: QMUX device opens
+
+-- CTL
+    TX 01:0B:00:00:00:00:00:01:21:00:00:00
+    RX 01:C0:00:80:00:00:01:01:21:00:B5:00:02:04:00:00:00:00:00:01:AB:00:22:00:01:00:05:00:01:01:00:24:00:02:01:00:0E:00:03:01:00:19:00:04:01:00:06:00:05:01:00:0A:00:07:01:00:03:00:08:01:00:02:00:09:02:00:01:00:0A:02:00:18:00:0B:01:00:24:00:0C:01:00:04:00:0F:01:00:00:00:10:02:00:00:00:11:01:00:...
+  [OK]   CTL get version info
+         services reported by the modem: 34
+           CTL (0x00) v1.5
+           WDS (0x01) v1.36
+           DMS (0x02) v1.14
+           NAS (0x03) v1.25
+           QOS (0x04) v1.6
+           WMS (0x05) v1.10
+           AUTH (0x07) v1.3
+           AT (0x08) v1.2
+           VOICE (0x09) v2.1
+           CAT2 (0x0a) v2.24
+           UIM (0x0b) v1.36
+           PBM (0x0c) v1.4
+           ? (0x0f) v1.0
+           LOC (0x10) v2.0
+           SAR (0x11) v1.0
+           ? (0x17) v1.0
+           ? (0x18) v1.0
+           WDA (0x1a) v1.11
+           ? (0x1d) v1.1
+           COEX (0x22) v1.0
+           PDC (0x24) v1.0
+           ? (0x29) v1.0
+           DSD (0x2a) v1.0
+           ? (0x2b) v1.0
+           ? (0x2e) v1.0
+           ? (0x30) v1.0
+           ? (0x36) v1.0
+           ? (0xe3) v0.0
+           ? (0xe4) v0.0
+           ? (0xe5) v0.0
+           ? (0xe6) v0.0
+           ? (0xe7) v0.0
+           ? (0xe8) v1.0
+           ? (0xea) v0.0
+    TX 01:0F:00:00:00:00:00:02:22:00:04:00:01:01:00:02
+    RX 01:17:00:80:00:00:01:02:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+  [OK]   CTL allocate CID
+         service DMS -> client id 1
+    TX 01:0F:00:00:00:00:00:03:22:00:04:00:01:01:00:03
+    RX 01:17:00:80:00:00:01:03:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+  [OK]   CTL allocate CID
+         service NAS -> client id 1
+    TX 01:0F:00:00:00:00:00:04:22:00:04:00:01:01:00:0B
+    RX 01:17:00:80:00:00:01:04:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+  [OK]   CTL allocate CID
+         service UIM -> client id 1
+         QMUX flags byte seen on modem->host frames: 0x80 (as expected for QMUX)
+STAGE 2 PASS: CTL answers and allocates a DMS client id
+
+-- DMS
+    TX 01:0C:00:00:02:01:00:01:00:23:00:00:00
+    RX 01:5B:00:80:02:01:02:01:00:23:00:4F:00:02:04:00:00:00:00:00:01:45:00:4D:50:53:53:2E:44:50:4D:2E:32:2E:30:2E:32:2E:63:31:2E:37:2D:30:30:30:36:37:2D:4D:38:39:33:36:46:41:41:41:41:4E:55:5A:4D:2D:31:20:20:31:20:20:5B:4D:61:79:20:31:34:20:32:30:31:39:20:30:31:3A:30:30:3A:30:30:5D
+  [OK]   DMS get revision
+         revision: MPSS.DPM.2.0.2.c1.7-00067-M8936FAAAANUZM-1  1  [May 14 2019 01:00:00]
+    TX 01:0C:00:00:02:01:00:02:00:25:00:00:00
+    RX 01:45:00:80:02:01:02:02:00:25:00:39:00:02:04:00:00:00:00:00:13:01:00:31:12:0E:00:30:30:30:30:30:30:30:30:30:30:30:30:30:30:10:08:00:42:30:30:30:30:30:30:30:11:0F:00:33:35:30:30:30:30:30:30:30:30:30:30:30:30:38
+  [OK]   DMS get IDs
+         IMEI: 350000000000008
+         ESN: B0000000
+         MEID: 00000000000000
+         IMEI SV: 1
+    TX 01:0C:00:00:02:01:00:03:00:2D:00:00:00
+    RX 01:17:00:80:02:01:02:03:00:2D:00:0B:00:02:04:00:00:00:00:00:01:01:00:00
+  [OK]   DMS get operating mode
+         operating mode: 0 (online)
+STAGE 3 PASS: DMS returns modem identity
+
+-- UIM
+    TX 01:0C:00:00:0B:01:00:01:00:2F:00:00:00
+    RX 01:55:00:80:0B:01:02:01:00:2F:00:49:00:02:04:00:00:00:00:00:15:03:00:02:00:00:11:03:00:02:00:00:10:33:00:FF:FF:FF:FF:FF:FF:FF:FF:02:01:00:00:00:00:01:02:01:00:0B:00:00:10:A0:00:00:00:87:10:02:FF:47:F0:01:89:00:00:01:FF:00:00:00:00:00:00:00:02:00:00:00:03:00
+  [OK]   UIM get card status
+         slot 0: card_state=1 (present) upin_state=0 apps=1
+           app 0: type=2 (USIM) state=1 (detected) pin1_state=0
+         slot 1: card_state=2 (error) error_code=3 upin_state=0 apps=0
+-- UIM provisioning (--provision): activating primary GW session for slot 1
+    TX 01:26:00:00:0B:01:00:02:00:38:00:1A:00:01:02:00:00:01:10:12:00:01:10:A0:00:00:00:87:10:02:FF:47:F0:01:89:00:00:01:FF
+    RX 01:13:00:80:0B:01:02:02:00:38:00:07:00:02:04:00:00:00:00:00
+  [OK]   UIM change provisioning session (0x38)
+    TX 01:0C:00:00:0B:01:00:03:00:2F:00:00:00
+    RX 01:55:00:80:0B:01:02:03:00:2F:00:49:00:02:04:00:00:00:00:00:15:03:00:02:00:00:11:03:00:02:00:00:10:33:00:00:00:FF:FF:FF:FF:FF:FF:02:01:00:00:00:00:01:02:07:02:0B:00:00:10:A0:00:00:00:87:10:02:FF:47:F0:01:89:00:00:01:FF:00:03:03:0A:01:03:0A:02:00:00:00:03:00
+  [OK]   UIM get card status (after provisioning)
+         slot 0: card_state=1 (present) upin_state=0 apps=1
+           app 0: type=2 (USIM) state=7 (ready) pin1_state=3
+         slot 1: card_state=2 (error) error_code=3 upin_state=0 apps=0
+STAGE 4 PASS: UIM reports card status (inspect the slot lines: absent/present is data, not a failure)
+
+-- NAS
+    TX 01:0C:00:00:03:01:00:01:00:24:00:00:00
+    RX 01:4B:00:80:03:01:02:01:00:24:00:3F:00:02:04:00:00:00:00:00:01:06:00:02:02:02:02:01:05:10:01:00:00:11:01:00:00:12:05:00:FA:00:63:00:00:15:03:00:01:05:00:21:05:00:01:03:00:00:00:26:02:00:A9:01:27:05:00:FA:00:63:00:00:28:01:00:00
+  [OK]   NAS get serving system
+         registration: searching cs_attach=2 ps_attach=2 radio_if_count=1
+    TX 01:0C:00:00:03:01:00:02:00:20:00:00:00
+    RX 01:18:00:80:03:01:02:02:00:20:00:0C:00:02:04:00:00:00:00:00:01:02:00:A5:05
+  [OK]   NAS get signal strength
+         signal: -91 dBm, radio_if=5
+STAGE 5 PASS: NAS answers (registered or not is reported above, it is not what this stage tests)
+
+-- extras (read-only, informational)
+    TX 01:0C:00:00:03:01:00:03:00:4F:00:00:00
+    RX 01:1E:00:80:03:01:02:03:00:4F:00:12:00:02:04:00:00:00:00:00:13:03:00:A5:0A:00:20:02:00:03:00
+  [OK]   NAS get signal info (0x4F)
+    TX 01:0C:00:00:03:01:00:04:00:34:00:00:00
+    RX 01:70:00:80:03:01:02:04:00:34:00:64:00:02:04:00:00:00:00:00:10:01:00:00:11:02:00:1C:00:12:08:00:FF:FF:FF:BF:FF:FF:FF:FF:14:02:00:FF:00:15:08:00:FF:3F:DF:5B:FF:07:00:00:16:01:00:00:18:04:00:02:00:00:00:19:04:00:02:00:00:00:1A:08:00:3F:00:00:00:00:00:00:00:1C:04:00:03:08:05:04:1D:04:00:00:...
+  [OK]   NAS get system selection preference (0x34)
+    TX 01:0F:00:00:00:00:00:05:22:00:04:00:01:01:00:09
+    RX 01:17:00:80:00:00:01:05:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:09:01
+  [OK]   CTL allocate CID
+         service VOICE -> client id 1
+    TX 01:0C:00:00:09:01:00:01:00:2F:00:00:00
+    RX 01:17:00:80:09:01:02:01:00:2F:00:0B:00:02:04:00:00:00:00:00:10:01:00:00
+  [OK]   VOICE get all call info (0x2F)
+    TX 01:10:00:00:00:00:00:06:23:00:05:00:01:02:00:09:01
+    RX 01:17:00:80:00:00:01:06:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:09:01
+    TX 01:0F:00:00:00:00:00:07:22:00:04:00:01:01:00:1A
+    RX 01:17:00:80:00:00:01:07:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:1A:01
+  [OK]   CTL allocate CID
+         service WDA -> client id 1
+    TX 01:0C:00:00:1A:01:00:01:00:21:00:00:00
+    RX 01:5D:00:80:1A:01:02:01:00:21:00:51:00:02:04:00:00:00:00:00:10:01:00:00:11:04:00:01:00:00:00:12:04:00:00:00:00:00:13:04:00:00:00:00:00:14:04:00:00:00:00:00:15:04:00:00:00:00:00:16:04:00:00:00:00:00:17:04:00:10:00:00:00:18:04:00:00:10:00:00:1A:04:00:00:00:00:00:19:04:00:01:00:00:00
+  [OK]   WDA get data format (0x21)
+    TX 01:10:00:00:00:00:00:08:23:00:05:00:01:02:00:1A:01
+    RX 01:17:00:80:00:00:01:08:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:1A:01
+
+    TX 01:10:00:00:00:00:00:09:23:00:05:00:01:02:00:0B:01
+    RX 01:17:00:80:00:00:01:09:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+    TX 01:10:00:00:00:00:00:0A:23:00:05:00:01:02:00:03:01
+    RX 01:17:00:80:00:00:01:0A:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+    TX 01:10:00:00:00:00:00:0B:23:00:05:00:01:02:00:02:01
+    RX 01:17:00:80:00:00:01:0B:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+==== SUMMARY (stages 1-5 of the readiness list; stages 6-12 need the HAL) ====
+  stage 1: PASS
+  stage 2: PASS
+  stage 3: PASS
+  stage 4: PASS
+  stage 5: PASS

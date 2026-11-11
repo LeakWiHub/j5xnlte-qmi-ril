@@ -1,0 +1,7 @@
+# Found on the real j5xnlte (2026-11-09): /dev/wwan0qmi0 did not exist until these modules were loaded by hand
+# (insmod rpmsg_wwan_ctrl.ko, qcom_bam_dmux.ko, rmnet.ko from /vendor/lib/modules). Module order is the one used by hand.
+# If your vendor already loads them, these lines only log an error. NOT verified as an init rc on a device.
+on boot
+    insmod /vendor/lib/modules/rpmsg_wwan_ctrl.ko
+    insmod /vendor/lib/modules/qcom_bam_dmux.ko
+    insmod /vendor/lib/modules/rmnet.ko

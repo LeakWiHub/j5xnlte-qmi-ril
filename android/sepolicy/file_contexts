@@ -1,0 +1,2 @@
+/vendor/bin/hw/android\.hardware\.radio-service\.j5xnlte-qmi   u:object_r:j5qmi_ril_exec:s0
+/dev/wwan0qmi0                                                   u:object_r:qmi_device:s0

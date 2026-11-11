@@ -1,0 +1,96 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_android:
+        description: "Also run the Android tree build on the self-hosted runner"
+        type: boolean
+        default: false
+
+jobs:
+  # Runs on a plain GitHub runner. Exercises codec/transport/service layer/HAL logic/install scripts on the host.
+  # It is NOT a device test and not a binder ABI test.
+  host-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc g++ clang python3 qemu-user gcc-aarch64-linux-gnu
+      - name: Fetch the frozen radio AIDL (LineageOS 23.0, Android 16), sparse
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse --branch lineage-23.0 \
+            https://github.com/LineageOS/android_hardware_interfaces "$RUNNER_TEMP/hi"
+          git -C "$RUNNER_TEMP/hi" sparse-checkout set radio/aidl
+          git -C "$RUNNER_TEMP/hi" rev-parse HEAD | tee "$RUNNER_TEMP/hi.rev"
+          test -d "$RUNNER_TEMP/hi/radio/aidl/aidl_api/android.hardware.radio.voice/4"
+      - name: All host tests
+        run: bash scripts/run-all-tests.sh "$RUNNER_TEMP/hi/radio/aidl/aidl_api"
+      - name: Generated HAL bases are up to date (V4)
+        run: |
+          bash tools/gen-hal-base/regen.sh "$RUNNER_TEMP/hi/radio/aidl/aidl_api"
+          git diff --exit-code -- hal/gen
+
+  # Standalone HAL build with the NDK on a plain GitHub runner (no AOSP tree). First real compile of the HAL against
+  # the real NDK AIDL stubs: expect to have to fix errors on the first runs. Produces the vendor binary as an artifact.
+  hal-ndk-build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the frozen radio AIDL (LineageOS 23.0), sparse
+        run: |
+          git clone --depth 1 --filter=blob:none --sparse --branch lineage-23.0 \
+            https://github.com/LineageOS/android_hardware_interfaces "$RUNNER_TEMP/hi"
+          git -C "$RUNNER_TEMP/hi" sparse-checkout set radio/aidl
+      - name: aidl compiler (SDK build-tools) and NDK
+        run: |
+          SDK=${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}
+          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --install "build-tools;35.0.0" "ndk;27.2.12479018" >/dev/null
+          echo "SDK=$SDK" >> "$GITHUB_ENV"
+          "$SDK/build-tools/35.0.0/aidl" --help 2>&1 | head -30
+      - name: Build the HAL
+        run: |
+          bash scripts/build-hal-ndk.sh "$SDK/ndk/27.2.12479018" "$SDK/build-tools/35.0.0/aidl" \
+            "$RUNNER_TEMP/hi/radio/aidl/aidl_api" build/hal-ndk 2>&1 | tee hal-build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: j5xnlte-radio-hal-ndk
+          path: |
+            build/hal-ndk/android.hardware.radio-service.j5xnlte-qmi
+            hal-build.log
+
+  # Needs a PREPARED LineageOS 23.0 source tree on a self-hosted runner (repo sync is far too large for hosted runners).
+  # Enable it by setting repository variables ANDROID_TREE (absolute path to the tree) and LUNCH_TARGET
+  # (the lunch target of your tree; the right name depends on the Lineage 23.0 release you synced).
+  # Not run by the author of this project: no Android tree was available.
+  android-build:
+    if: ${{ vars.ANDROID_TREE != '' && (github.event_name == 'workflow_dispatch' && inputs.build_android || github.event_name == 'push') }}
+    needs: host-tests
+    runs-on: [self-hosted, linux, lineage-tree]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Put the project into the tree
+        run: |
+          test -n "${{ vars.LUNCH_TARGET }}" || { echo "set the LUNCH_TARGET repository variable"; exit 1; }
+          mkdir -p "${{ vars.ANDROID_TREE }}/external/j5xnlte-qmi-ril"
+          rsync -a --delete --exclude .git --exclude build "$GITHUB_WORKSPACE/" "${{ vars.ANDROID_TREE }}/external/j5xnlte-qmi-ril/"
+      - name: Build the HAL module
+        working-directory: ${{ vars.ANDROID_TREE }}
+        run: |
+          source build/envsetup.sh
+          lunch "${{ vars.LUNCH_TARGET }}"
+          m android.hardware.radio-service.j5xnlte-qmi
+      - name: Collect the binary
+        run: |
+          mkdir -p out-bin
+          cp "$(find '${{ vars.ANDROID_TREE }}/out/target/product' -name android.hardware.radio-service.j5xnlte-qmi -path '*vendor/bin/hw*' | head -1)" out-bin/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: j5xnlte-radio-hal
+          path: out-bin/

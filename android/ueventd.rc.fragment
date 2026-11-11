@@ -1,0 +1,3 @@
+# Gives the radio user access to the QMUX node instead of chmod 666. Only needed when the existing ueventd rules
+# do not already do this (scripts/install.sh checks). The SELinux label comes from android/sepolicy/file_contexts.
+/dev/wwan0qmi0   0660   radio   radio

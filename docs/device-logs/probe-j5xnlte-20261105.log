@@ -1,0 +1,125 @@
+# ./qmi-probe-aarch64
+qmi-probe: device /dev/wwan0qmi0
+
+  [OK]   open(/dev/wwan0qmi0) fd=3
+STAGE 1 PASS: QMUX device opens
+
+-- CTL
+    TX 01:0B:00:00:00:00:00:01:21:00:00:00
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:0B:00:80:00:00:02:00:27:00:00:00
+    (skipped frame: svc=CTL indication msg=0x0027)
+    RX 01:C0:00:80:00:00:01:01:21:00:B5:00:02:04:00:00:00:00:00:01:AB:00:22:00:01:00:05:00:01:01:00:24:00:02:01:00:0E:00:03:01:00:19:00:04:01:00:06:00:05:01:00:0A:00:07:01:00:03:00:08:01:00:02:00:09:02:00:01:00:0A:02:00:18:00:0B:01:00:24:00:0C:01:00:04:00:0F:01:00:00:00:10:02:00:00:00:11:01:00:...
+  [OK]   CTL get version info
+         services reported by the modem: 34
+           CTL (0x00) v1.5
+           WDS (0x01) v1.36
+           DMS (0x02) v1.14
+           NAS (0x03) v1.25
+           QOS (0x04) v1.6
+           WMS (0x05) v1.10
+           AUTH (0x07) v1.3
+           AT (0x08) v1.2
+           VOICE (0x09) v2.1
+           CAT2 (0x0a) v2.24
+           UIM (0x0b) v1.36
+           PBM (0x0c) v1.4
+           ? (0x0f) v1.0
+           LOC (0x10) v2.0
+           SAR (0x11) v1.0
+           ? (0x17) v1.0
+           ? (0x18) v1.0
+           WDA (0x1a) v1.11
+           ? (0x1d) v1.1
+           COEX (0x22) v1.0
+           PDC (0x24) v1.0
+           ? (0x29) v1.0
+           DSD (0x2a) v1.0
+           ? (0x2b) v1.0
+           ? (0x2e) v1.0
+           ? (0x30) v1.0
+           ? (0x36) v1.0
+           ? (0xe3) v0.0
+           ? (0xe4) v0.0
+           ? (0xe5) v0.0
+           ? (0xe6) v0.0
+           ? (0xe7) v0.0
+           ? (0xe8) v1.0
+           ? (0xea) v0.0
+    TX 01:0F:00:00:00:00:00:02:22:00:04:00:01:01:00:02
+    RX 01:17:00:80:00:00:01:02:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+  [OK]   CTL allocate CID
+         service DMS -> client id 1
+    TX 01:0F:00:00:00:00:00:03:22:00:04:00:01:01:00:03
+    RX 01:17:00:80:00:00:01:03:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+  [OK]   CTL allocate CID
+         service NAS -> client id 1
+    TX 01:0F:00:00:00:00:00:04:22:00:04:00:01:01:00:0B
+    RX 01:17:00:80:00:00:01:04:22:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+  [OK]   CTL allocate CID
+         service UIM -> client id 1
+         QMUX flags byte seen on modem->host frames: 0x80 (as expected for QMUX)
+STAGE 2 PASS: CTL answers and allocates a DMS client id
+
+-- DMS
+    TX 01:0C:00:00:02:01:00:01:00:23:00:00:00
+    RX 01:5B:00:80:02:01:02:01:00:23:00:4F:00:02:04:00:00:00:00:00:01:45:00:4D:50:53:53:2E:44:50:4D:2E:32:2E:30:2E:32:2E:63:31:2E:37:2D:30:30:30:36:37:2D:4D:38:39:33:36:46:41:41:41:41:4E:55:5A:4D:2D:31:20:20:31:20:20:5B:4D:61:79:20:31:34:20:32:30:31:39:20:30:31:3A:30:30:3A:30:30:5D
+  [OK]   DMS get revision
+         revision: MPSS.DPM.2.0.2.c1.7-00067-M8936FAAAANUZM-1  1  [May 14 2019 01:00:00]
+    TX 01:0C:00:00:02:01:00:02:00:25:00:00:00
+    RX 01:45:00:80:02:01:02:02:00:25:00:39:00:02:04:00:00:00:00:00:13:01:00:31:12:0E:00:30:30:30:30:30:30:30:30:30:30:30:30:30:30:10:08:00:42:30:30:30:30:30:30:30:11:0F:00:33:35:30:30:30:30:30:30:30:30:30:30:30:30:38
+  [OK]   DMS get IDs
+         IMEI: 350000000000008
+         ESN: B0000000
+         MEID: 00000000000000
+         IMEI SV: 1
+    TX 01:0C:00:00:02:01:00:03:00:2D:00:00:00
+    RX 01:17:00:80:02:01:02:03:00:2D:00:0B:00:02:04:00:00:00:00:00:01:01:00:05
+  [OK]   DMS get operating mode
+         operating mode: 5
+STAGE 3 PASS: DMS returns modem identity
+
+-- UIM
+    TX 01:0C:00:00:0B:01:00:01:00:2F:00:00:00
+    RX 01:37:00:80:0B:01:02:01:00:2F:00:2B:00:02:04:00:00:00:00:00:15:03:00:02:00:00:11:03:00:02:00:00:10:15:00:FF:FF:FF:FF:FF:FF:FF:FF:02:02:00:00:00:03:00:02:00:00:00:03:00
+  [OK]   UIM get card status
+         slot 0: card_state=2 (error) upin_state=0 apps=0
+         slot 1: card_state=2 (error) upin_state=0 apps=0
+STAGE 4 PASS: UIM reports card status (inspect the slot lines: absent/present is data, not a failure)
+
+-- NAS
+    TX 01:0C:00:00:03:01:00:01:00:24:00:00:00
+    RX 01:1B:00:80:03:01:02:01:00:24:00:0F:00:02:04:00:01:00:4A:00:01:05:00:00:00:00:00:00
+  [FAIL] NAS get serving system: QMI error 0x004a INFO_UNAVAILABLE
+    TX 01:0C:00:00:03:01:00:02:00:20:00:00:00
+    RX 01:18:00:80:03:01:02:02:00:20:00:0C:00:02:04:00:00:00:00:00:01:02:00:80:00
+  [OK]   NAS get signal strength
+         signal: -128 dBm, radio_if=0
+STAGE 5 FAIL: NAS answers (registered or not is reported above, it is not what this stage tests)
+
+    TX 01:10:00:00:00:00:00:05:23:00:05:00:01:02:00:0B:01
+    RX 01:17:00:80:00:00:01:05:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:0B:01
+    TX 01:10:00:00:00:00:00:06:23:00:05:00:01:02:00:03:01
+    RX 01:17:00:80:00:00:01:06:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:03:01
+    TX 01:10:00:00:00:00:00:07:23:00:05:00:01:02:00:02:01
+    RX 01:17:00:80:00:00:01:07:23:00:0C:00:02:04:00:00:00:00:00:01:02:00:02:01
+==== SUMMARY (stages 1-5 of the readiness list; stages 6-12 need the HAL) ====
+  stage 1: PASS
+  stage 2: PASS
+  stage 3: PASS
+  stage 4: PASS
+  stage 5: FAIL/not reached
+#

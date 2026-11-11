@@ -1,0 +1,22 @@
+# Dedicated domain for the QMI RIL HAL. No permissive, no dontaudit, no wildcard device access.
+# NOT compiled by the author (no policy toolchain / tree available): treat as a reviewed draft.
+type j5qmi_ril, domain;
+type j5qmi_ril_exec, exec_type, vendor_file_type, file_type;
+
+init_daemon_domain(j5qmi_ril)
+hal_server_domain(j5qmi_ril, hal_radio)
+
+# the QMUX node and nothing else under /dev
+type qmi_device, dev_type;
+allow j5qmi_ril qmi_device:chr_file rw_file_perms;
+
+# bringing the rmnet/wwan interface up and setting its MTU (SIOCGIFFLAGS/SIOCSIFFLAGS/SIOCSIFMTU on an AF_INET socket)
+allow j5qmi_ril self:capability net_admin;
+allow j5qmi_ril self:udp_socket create;
+allowxperm j5qmi_ril self:udp_socket ioctl { SIOCGIFFLAGS SIOCSIFFLAGS SIOCSIFMTU };
+# finding the interface under /sys/class/net
+allow j5qmi_ril sysfs_net:dir r_dir_perms;
+allow j5qmi_ril sysfs_net:lnk_file r_file_perms;
+
+# singleton lock: abstract unix socket bound by the service itself
+allow j5qmi_ril self:unix_stream_socket { create bind };

@@ -1,0 +1,8 @@
+# Needed only when the tree does not label these instances already (check system/sepolicy and the device policy).
+android.hardware.radio.config.IRadioConfig/default        u:object_r:hal_radio_service:s0
+android.hardware.radio.modem.IRadioModem/slot1            u:object_r:hal_radio_service:s0
+android.hardware.radio.sim.IRadioSim/slot1                u:object_r:hal_radio_service:s0
+android.hardware.radio.network.IRadioNetwork/slot1        u:object_r:hal_radio_service:s0
+android.hardware.radio.messaging.IRadioMessaging/slot1    u:object_r:hal_radio_service:s0
+android.hardware.radio.voice.IRadioVoice/slot1            u:object_r:hal_radio_service:s0
+android.hardware.radio.data.IRadioData/slot1              u:object_r:hal_radio_service:s0

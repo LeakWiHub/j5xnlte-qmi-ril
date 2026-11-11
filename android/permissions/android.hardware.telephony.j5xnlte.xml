@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Features implemented by this RIL. Skip this file if the vendor image already declares them. -->
+<permissions>
+    <feature name="android.hardware.telephony" />
+    <feature name="android.hardware.telephony.gsm" />
+    <feature name="android.hardware.telephony.radio.access" />
+    <feature name="android.hardware.telephony.subscription" />
+    <feature name="android.hardware.telephony.calling" />
+    <feature name="android.hardware.telephony.messaging" />
+    <feature name="android.hardware.telephony.data" />
+</permissions>

@@ -1,0 +1,23 @@
+# Image-build variant: the service is a normal HAL service. The image's own RIL daemon must NOT be part of the
+# same image (two RILs on one modem are forbidden). For switching an installed system use scripts/install.sh.
+service vendor.j5xnlte-ril /vendor/bin/hw/android.hardware.radio-service.j5xnlte-qmi
+    class hal
+    user radio
+    group radio
+    capabilities NET_ADMIN
+    interface aidl android.hardware.radio.config.IRadioConfig/default
+    interface aidl android.hardware.radio.modem.IRadioModem/slot1
+    interface aidl android.hardware.radio.sim.IRadioSim/slot1
+    interface aidl android.hardware.radio.network.IRadioNetwork/slot1
+    interface aidl android.hardware.radio.messaging.IRadioMessaging/slot1
+    interface aidl android.hardware.radio.voice.IRadioVoice/slot1
+    interface aidl android.hardware.radio.data.IRadioData/slot1
+    oneshot
+    disabled
+
+# Started only when explicitly enabled, so that a missing/incompatible build can never take the phone's radio away.
+on property:persist.vendor.j5ril.enable=1
+    start vendor.j5xnlte-ril
+
+on property:persist.vendor.j5ril.enable=0
+    stop vendor.j5xnlte-ril
