@@ -455,6 +455,8 @@ int ril_data_find_iface(char *out, size_t cap)
     return 0;
 }
 
+/* Idempotent: only the settings that really differ are written, so an interface that is already in the requested state
+ * needs no privileges (and the host tests can use "lo" as a non-root user). */
 static int iface_set(const char *ifname, int up, int mtu)
 {
     struct ifreq ifr;
@@ -463,15 +465,24 @@ static int iface_set(const char *ifname, int up, int mtu)
     memset(&ifr, 0, sizeof(ifr));
     snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
     if (mtu > 0) {
-        ifr.ifr_mtu = mtu;
-        if (ioctl(s, SIOCSIFMTU, &ifr) < 0) rc = -errno;
+        int cur = -1;
+        if (ioctl(s, SIOCGIFMTU, &ifr) == 0) cur = ifr.ifr_mtu;
+        if (cur != mtu) {
+            ifr.ifr_mtu = mtu;
+            if (ioctl(s, SIOCSIFMTU, &ifr) < 0) rc = -errno;
+        }
     }
+    memset(&ifr.ifr_ifru, 0, sizeof(ifr.ifr_ifru));
     if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
         rc = -errno;
     } else {
-        if (up) ifr.ifr_flags |= IFF_UP | IFF_RUNNING;
-        else ifr.ifr_flags &= ~IFF_UP;
-        if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) rc = -errno;
+        short want = ifr.ifr_flags;
+        if (up) want |= IFF_UP;
+        else want &= ~IFF_UP;
+        if (want != ifr.ifr_flags) {
+            ifr.ifr_flags = want;
+            if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) rc = -errno;
+        }
     }
     close(s);
     return rc;
