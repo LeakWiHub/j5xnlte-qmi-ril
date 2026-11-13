@@ -50,6 +50,7 @@
 #define QMI_DATA_ENDPOINT_BAM_DMUX 5
 
 /* ---- WDA ---- */
+#define WDA_SET_DATA_FORMAT 0x0020
 #define WDA_GET_DATA_FORMAT 0x0021
 
 static uint32_t le32(const uint8_t *p) { return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
@@ -162,15 +163,18 @@ void ril_wms_register(struct ril_qmi *r)
     }
     rc = ril_svcw(r, QMI_SVC_WMS, WMS_SET_ROUTES, &w, 0, 0, NULL, 0, NULL);
     if (rc) qmi_logf(QMI_LOG_WARN, "ril: WMS set routes failed (%d): incoming SMS may be stored instead of delivered", rc);
+    else qmi_logf(QMI_LOG_WARN, "ril: WMS routes set (transfer only)");
     qmi_wbuf_init(&w, tl, sizeof(tl));
     qmi_tlv_put_u8(&w, 0x10, 1); /* report new MT messages */
     rc = ril_svcw(r, QMI_SVC_WMS, WMS_SET_EVENT_REPORT, &w, 0, 0, NULL, 0, NULL);
     if (rc) qmi_logf(QMI_LOG_WARN, "ril: WMS event report registration failed (%d): incoming SMS will not be seen", rc);
+    else qmi_logf(QMI_LOG_WARN, "ril: WMS event report registered");
 }
 
 void ril_wms_on_indication(struct ril_qmi *r, const qmi_msg_t *m)
 {
     qmi_span_t v;
+    qmi_logf(QMI_LOG_WARN, "ril: WMS indication 0x%04x (event report is 0x%04x)", m->msg_id, WMS_EVENT_REPORT_IND);
     if (m->msg_id != WMS_EVENT_REPORT_IND) return;
     if (qmi_tlv_find(m->tlvs, 0x11, &v) == 1) {
         qmi_rd_t rd;
@@ -202,6 +206,7 @@ void ril_wms_on_indication(struct ril_qmi *r, const qmi_msg_t *m)
             buf[2] = (uint8_t)(txid >> 16);
             buf[3] = (uint8_t)(txid >> 24);
             memcpy(buf + 4, d, len);
+            qmi_logf(QMI_LOG_WARN, "ril: incoming SMS %u bytes, ack required %d", len, ack_ind == 0);
             ril_ev_push(r, EV_SMS, ack_ind == 0, buf, len + 4); /* ack_indicator 0 = "send ACK required" */
         }
     } else if (qmi_tlv_find(m->tlvs, 0x10, &v) == 1) {
@@ -488,6 +493,45 @@ static int iface_set(const char *ifname, int up, int mtu)
     return rc;
 }
 
+/* The BAM-DMUX netdev of the kernel carries raw IP, while the modem reported link layer 802.3 for its default endpoint.
+ * A modem that expects Ethernet frames drops raw IP packets (seen: WDS packet counters stay 0 although the kernel
+ * transmits). Set raw IP (2) for the DMUX channel's endpoint and read it back. Layouts per libqmi/ModemManager (not
+ * verified on this modem): Set Data Format 0x0020: 0x10 qos(u8), 0x11 link layer(u32), 0x12 UL aggr(u32), 0x13 DL aggr(u32),
+ * 0x17 endpoint {type u32, iface u32}; Get Data Format 0x0021: 0x10 endpoint. Failures are reported, not fatal. */
+static void wda_set_raw_ip(struct ril_qmi *r, long port)
+{
+    uint8_t tl[64], rsp[128], ep[8];
+    qmi_wbuf_t w;
+    qmi_span_t sp, v;
+    size_t n = 0;
+    int rc;
+    if (!r->cid[QMI_SVC_WDA]) { qmi_logf(QMI_LOG_INFO, "ril: no WDA client, data format not set"); return; }
+    ep[0] = QMI_DATA_ENDPOINT_BAM_DMUX; ep[1] = ep[2] = ep[3] = 0;
+    ep[4] = (uint8_t)port; ep[5] = (uint8_t)(port >> 8); ep[6] = ep[7] = 0;
+    qmi_wbuf_init(&w, tl, sizeof(tl));
+    qmi_tlv_put_u8(&w, 0x10, 0);
+    qmi_tlv_put_u32(&w, 0x11, 2);
+    qmi_tlv_put_u32(&w, 0x12, 0);
+    qmi_tlv_put_u32(&w, 0x13, 0);
+    qmi_tlv_put(&w, 0x17, ep, sizeof(ep));
+    rc = ril_svcw(r, QMI_SVC_WDA, WDA_SET_DATA_FORMAT, &w, 0, 0, rsp, sizeof(rsp), &n);
+    qmi_logf(QMI_LOG_WARN, "ril: WDA set data format raw IP (BAM_DMUX channel %ld) -> %d", port, rc);
+    fprintf(stderr, "ril: WDA set data format raw IP (BAM_DMUX channel %ld) -> %d\n", port, rc);
+    qmi_wbuf_init(&w, tl, sizeof(tl));
+    qmi_tlv_put(&w, 0x10, ep, sizeof(ep));
+    rc = ril_svcw(r, QMI_SVC_WDA, WDA_GET_DATA_FORMAT, &w, 0, 0, rsp, sizeof(rsp), &n);
+    if (rc) {
+        qmi_logf(QMI_LOG_WARN, "ril: WDA get data format for the endpoint failed (%d)", rc);
+        fprintf(stderr, "ril: WDA get data format for the endpoint failed (%d)\n", rc);
+        return;
+    }
+    sp.p = rsp; sp.n = n;
+    if (qmi_tlv_find(sp, 0x11, &v) == 1 && v.n >= 4) {
+        qmi_logf(QMI_LOG_WARN, "ril: WDA link layer protocol of the DMUX endpoint = %u (1 = 802.3, 2 = raw IP)", le32(v.p));
+        fprintf(stderr, "ril: WDA link layer protocol of the DMUX endpoint = %u (1 = 802.3, 2 = raw IP)\n", le32(v.p));
+    }
+}
+
 int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out)
 {
     uint8_t tl[320], rsp[256];
@@ -511,6 +555,7 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         snprintf(pth, sizeof(pth), "/sys/class/net/%s/dev_port", out->ifname);
         f = fopen(pth, "r");
         if (f) { if (fgets(buf, sizeof(buf), f)) port = strtol(buf, NULL, 0); fclose(f); }
+        wda_set_raw_ip(r, port);
         {
             /* The modem answered 0x30 to the endpoint-only request; mux id / client type are optional in the IDL, but
              * try them in turn (all variants are harmless: they only configure this WDS client). The first success wins. */
@@ -529,6 +574,7 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
                 rc = ril_svcw(r, QMI_SVC_WDS, WDS_BIND_MUX_DATA_PORT, &w, 0, 0, NULL, 0, NULL);
                 fprintf(stderr, "ril: WDS bind mux data port (BAM_DMUX, channel %ld, mux %d, client %d) -> %d\n",
                         port, var[vi].mux, var[vi].client, rc);
+                qmi_logf(QMI_LOG_WARN, "ril: WDS bind mux data port (channel %ld, mux %d, client %d) -> %d", port, var[vi].mux, var[vi].client, rc);
                 if (rc == 0) break;
             }
         }

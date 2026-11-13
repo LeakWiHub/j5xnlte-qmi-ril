@@ -48,3 +48,8 @@ done
 file "$OUT/android.hardware.radio-service.j5xnlte-qmi" 2>/dev/null || true
 ls -la "$OUT/android.hardware.radio-service.j5xnlte-qmi"
 "$BIN/llvm-readelf" -d "$OUT/android.hardware.radio-service.j5xnlte-qmi" | grep NEEDED
+
+# voice path holder (raw ALSA ioctls, no libs)
+"$CC" -O2 -fPIE -pie -Wall -o "$OUT/voice_hold" "$HERE/tools/voice/voice_hold.c"
+"$BIN/llvm-strip" "$OUT/voice_hold" || true
+ls -la "$OUT/voice_hold"

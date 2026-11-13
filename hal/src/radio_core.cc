@@ -31,7 +31,7 @@ bool RadioSimImpl::cardStatus(radio::sim::CardStatus* out, RadioError* err) {
         return false;
     }
     CardStatus cs;
-    cs.cardState = c.card_state == 1 ? CardStatus::STATE_PRESENT : c.card_state == 2 ? CardStatus::STATE_ERROR : CardStatus::STATE_ABSENT;
+    cs.cardState = c.card_state == 1 ? static_cast<int32_t>(CardStatus::STATE_PRESENT) : c.card_state == 2 ? static_cast<int32_t>(CardStatus::STATE_ERROR) : static_cast<int32_t>(CardStatus::STATE_ABSENT);
     cs.universalPinState = static_cast<PinState>(std::clamp(c.upin_state, 0, 5));
     cs.gsmUmtsSubscriptionAppIndex = -1;
     cs.cdmaSubscriptionAppIndex = -1;

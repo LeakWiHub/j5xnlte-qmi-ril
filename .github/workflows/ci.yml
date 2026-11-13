@@ -63,6 +63,7 @@ jobs:
           name: j5xnlte-radio-hal-ndk
           path: |
             build/hal-ndk/android.hardware.radio-service.j5xnlte-qmi
+            build/hal-ndk/voice_hold
             hal-build.log
 
   # Needs a PREPARED LineageOS 23.0 source tree on a self-hosted runner (repo sync is far too large for hosted runners).

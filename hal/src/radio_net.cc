@@ -3,6 +3,8 @@
 #define LOG_TAG "j5xnlte-ril"
 #include <android/log.h>
 
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cerrno>
@@ -229,10 +231,10 @@ radio::network::SignalStrength RadioNetworkImpl::signalFrom(const ril_signal_t& 
             o.operatorNumeric = plmnString(list[i].mcc, list[i].mnc);
             o.alphaLong = o.alphaShort = list[i].name[0] ? list[i].name : o.operatorNumeric;
             int forbidden = (list[i].status >> 4) & 3, inuse = list[i].status & 3;
-            o.status = forbidden == 1 ? radio::network::OperatorInfo::STATUS_FORBIDDEN
-                       : inuse == 1   ? radio::network::OperatorInfo::STATUS_CURRENT
-                       : inuse == 2   ? radio::network::OperatorInfo::STATUS_AVAILABLE
-                                      : radio::network::OperatorInfo::STATUS_UNKNOWN;
+            o.status = forbidden == 1 ? static_cast<int32_t>(radio::network::OperatorInfo::STATUS_FORBIDDEN)
+                       : inuse == 1   ? static_cast<int32_t>(radio::network::OperatorInfo::STATUS_CURRENT)
+                       : inuse == 2   ? static_cast<int32_t>(radio::network::OperatorInfo::STATUS_AVAILABLE)
+                                      : static_cast<int32_t>(radio::network::OperatorInfo::STATUS_UNKNOWN);
             out.push_back(o);
         }
         resp->getAvailableNetworksResponse(rspInfo(serial, mapError(rc)), out);
@@ -379,9 +381,34 @@ void RadioMessagingImpl::send(int32_t serial, const radio::messaging::GsmSmsMess
 }
 
 /* ================================================================== IRadioVoice */
+/* The voice DSP path (CS-Voice) is not opened by Android's generic audio HAL, so the module's j5x-voice daemon does it.
+ * It follows this one-word file: "active" while a call is dialing/alerting/active, otherwise "idle". */
+static void publishVoiceState(bool active) {
+    static int last = -1;
+    if (last == (active ? 1 : 0)) return;
+    last = active ? 1 : 0;
+    const char* dir = "/data/local/tmp/j5ril-state";
+    mkdir(dir, 0755);
+    std::string tmp = std::string(dir) + "/.call_state.tmp", dst = std::string(dir) + "/call_state";
+    FILE* f = fopen(tmp.c_str(), "w");
+    if (!f) return;
+    fputs(active ? "active\n" : "idle\n", f);
+    fclose(f);
+    rename(tmp.c_str(), dst.c_str());
+}
+
 void RadioVoiceImpl::notifyCallsChanged() {
     auto ind = mInd;
     if (ind) ind->callStateChanged(RadioIndicationType::UNSOLICITED);
+    h_.exec.post([this] {
+        Snapshot s;
+        radio::RadioError err;
+        if (!snapshot(&s, &err)) return;
+        bool active = false;
+        for (auto& c : s.calls)
+            active |= c.state == RIL_CALL_ACTIVE || c.state == RIL_CALL_DIALING || c.state == RIL_CALL_ALERTING;
+        publishVoiceState(active);
+    });
 }
 
 /* Android indexes calls 1..7 and keeps them stable for the life of a call; QMI call ids are the modem's own. */
@@ -456,7 +483,7 @@ int RadioVoiceImpl::activeId() {
                 c.isVoice = true;
                 c.isVoicePrivacy = false;
                 c.number = s.calls[i].number;
-                c.numberPresentation = s.calls[i].number[0] ? radio::voice::Call::PRESENTATION_ALLOWED : radio::voice::Call::PRESENTATION_UNKNOWN;
+                c.numberPresentation = s.calls[i].number[0] ? static_cast<int32_t>(radio::voice::Call::PRESENTATION_ALLOWED) : static_cast<int32_t>(radio::voice::Call::PRESENTATION_UNKNOWN);
                 c.namePresentation = radio::voice::Call::PRESENTATION_UNKNOWN;
                 out.push_back(c);
             }
