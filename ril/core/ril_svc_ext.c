@@ -47,6 +47,8 @@
 #define WDS_GET_PKT_STATISTICS 0x0024
 #define WDS_SET_IP_FAMILY_PREF 0x004D
 #define WDS_BIND_MUX_DATA_PORT 0x00A2
+#define WDS_BIND_DATA_PORT     0x0089
+#define SIO_PORT_A2_MUX_RMNET0 0x0e04   /* BAM-DMUX channel n = SIO port 0x0e04 + n (libqmi QmiSioPort) */
 #define QMI_DATA_ENDPOINT_BAM_DMUX 5
 
 /* ---- WDA ---- */
@@ -532,7 +534,8 @@ static int iface_set(const char *ifname, int up, int mtu)
  * 0x17 endpoint {type u32, iface u32}; Get Data Format 0x0021: 0x10 endpoint. Failures are reported, not fatal. */
 /* Experiment switches without a rebuild: /data/local/tmp/j5ril-state/data.conf, lines "key=value".
  *   wda=on|off     set raw IP on the DMUX endpoint before the call (default on)
- *   bind=none|mux1|auto   WDS Bind Mux Data Port: none (default), mux 1 only, or try all variants */
+ *   bind=sio|none|mux1|auto   sio (default): WDS Bind Data Port 0x0089 with SIO port A2_MUX_RMNETn (BAM-DMUX channel n);
+ *                         none; mux1 / auto: WDS Bind Mux Data Port 0x00A2 variants (QMAP style; the modem answered 0x30) */
 static void data_conf(const char *key, const char *def, char *out, size_t cap)
 {
     char line[96];
@@ -610,11 +613,19 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         if (f) { if (fgets(buf, sizeof(buf), f)) port = strtol(buf, NULL, 0); fclose(f); }
         char c_wda[16], c_bind[16];
         data_conf("wda", "on", c_wda, sizeof(c_wda));
-        data_conf("bind", "none", c_bind, sizeof(c_bind));
+        data_conf("bind", "sio", c_bind, sizeof(c_bind));
         qmi_logf(QMI_LOG_WARN, "ril: data setup knobs: wda=%s bind=%s (data.conf)", c_wda, c_bind);
         fprintf(stderr, "ril: data setup knobs: wda=%s bind=%s (data.conf)\n", c_wda, c_bind);
         if (strcmp(c_wda, "off") != 0) wda_set_raw_ip(r, port);
-        if (strcmp(c_bind, "none") != 0) {
+        if (strcmp(c_bind, "sio") == 0) {
+            /* BAM-DMUX (a2 mux) has no QMAP: the WDS client is tied to the channel through its SIO port.
+             * Bind Data Port 0x0089, TLV 0x01 = u16 QmiSioPort (libqmi data/qmi-service-wds.json). Not verified here. */
+            qmi_wbuf_init(&w, tl, sizeof(tl));
+            qmi_tlv_put_u16(&w, 0x01, (uint16_t)(SIO_PORT_A2_MUX_RMNET0 + port));
+            rc = ril_svcw(r, QMI_SVC_WDS, WDS_BIND_DATA_PORT, &w, 0, 0, NULL, 0, NULL);
+            fprintf(stderr, "ril: WDS bind data port (SIO 0x%04lx, channel %ld) -> %d\n", (long)SIO_PORT_A2_MUX_RMNET0 + port, port, rc);
+            qmi_logf(QMI_LOG_WARN, "ril: WDS bind data port (SIO 0x%04lx, channel %ld) -> %d", (long)SIO_PORT_A2_MUX_RMNET0 + port, port, rc);
+        } else if (strcmp(c_bind, "none") != 0) {
             /* The modem answered 0x30 to the endpoint-only request; mux id / client type are optional in the IDL, but
              * try them in turn (all variants are harmless: they only configure this WDS client). The first success wins. */
             struct bindvar { int mux; int client; };

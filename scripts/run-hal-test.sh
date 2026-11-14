@@ -16,5 +16,5 @@ for f in ril/core/*.c qmi/src/qmi_codec.c qmi/src/qmi_dev.c qmi/src/qmi_log.c; d
   gcc -std=c11 $SAN -Wall -Wextra -Werror -Iril/core -Iqmi/include -c $f -o $B/$(basename $f .c).o
 done
 g++ -std=c++20 $SAN -Wall -Wextra -Werror -Ihal/src -Ihal/gen -Itests/hal -I$B/rec -I$B/mock -Itools/aidl-mock/mock-ndk -Iril/core -Iqmi/include \
-    tests/hal/test_hal.cc hal/src/hal_common.cc hal/src/radio_core.cc hal/src/radio_net.cc $B/*.o -lpthread -o $B/test_hal
+    tests/hal/test_hal.cc hal/src/hal_common.cc hal/src/radio_core.cc hal/src/radio_net.cc hal/src/voice_audio.cc $B/*.o -lpthread -o $B/test_hal
 exec python3 tests/fake_modem/fake_ril_modem.py -- $B/test_hal '{DEV}'

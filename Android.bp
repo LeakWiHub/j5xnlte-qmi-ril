@@ -53,6 +53,7 @@ cc_binary {
         "hal/src/hal_common.cc",
         "hal/src/radio_core.cc",
         "hal/src/radio_net.cc",
+        "hal/src/voice_audio.cc",
         "hal/src/main.cpp",
     ],
     local_include_dirs: [

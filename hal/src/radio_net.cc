@@ -4,6 +4,7 @@
 #include <android/log.h>
 
 #include <sys/stat.h>
+#include "voice_audio.h"
 
 #include <algorithm>
 #include <chrono>
@@ -381,12 +382,13 @@ void RadioMessagingImpl::send(int32_t serial, const radio::messaging::GsmSmsMess
 }
 
 /* ================================================================== IRadioVoice */
-/* The voice DSP path (CS-Voice) is not opened by Android's generic audio HAL, so the module's j5x-voice daemon does it.
- * It follows this one-word file: "active" while a call is dialing/alerting/active, otherwise "idle". */
+/* The voice DSP path (CS-Voice) is not opened by Android's generic audio HAL, so voice_audio.cc does it, driven from
+ * here. The one-word file below ("active" while dialing/alerting/active, else "idle") is kept only for diagnostics. */
 static void publishVoiceState(bool active) {
     static int last = -1;
     if (last == (active ? 1 : 0)) return;
     last = active ? 1 : 0;
+    voiceAudioCall(active);   /* the voice path is owned by the HAL itself (voice_audio.cc) */
     const char* dir = "/data/local/tmp/j5ril-state";
     mkdir(dir, 0755);
     std::string tmp = std::string(dir) + "/.call_state.tmp", dst = std::string(dir) + "/call_state";
@@ -617,7 +619,7 @@ static bool g_micMuted = false;
     REQUIRE_RESP(resp);
     h_.exec.post([resp, serial, enable] {
         bool ok = writeMicMute(enable);
-        if (ok) g_micMuted = enable;
+        if (ok) { g_micMuted = enable; voiceAudioMute(enable); }
         resp->setMuteResponse(rspInfo(serial, ok ? RadioError::NONE : RadioError::INTERNAL_ERR));
     });
     return ::ndk::ScopedAStatus::ok();

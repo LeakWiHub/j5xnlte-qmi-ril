@@ -13,6 +13,7 @@
 #include <cstring>
 
 #include "radio_impl.h"
+#include "voice_audio.h"
 
 using j5ril::Hal;
 
@@ -50,6 +51,7 @@ int main(int argc, char** argv) {
         __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, "cannot start the QMI stack on %s", dev);
         return 1;
     }
+    j5ril::voiceAudioStart();
     bool ok = true;
     ok &= add(hal.config, "android.hardware.radio.config.IRadioConfig", "default");
     ok &= add(hal.modem, "android.hardware.radio.modem.IRadioModem", "slot1");

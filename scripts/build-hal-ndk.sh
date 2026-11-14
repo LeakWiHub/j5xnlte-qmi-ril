@@ -39,7 +39,7 @@ for f in "$HERE"/qmi/src/qmi_codec.c "$HERE"/qmi/src/qmi_dev.c "$HERE"/qmi/src/q
 done
 n=0
 for f in $(find "$OUT/gen" -name '*.cpp') "$HERE"/hal/src/hal_common.cc "$HERE"/hal/src/radio_core.cc \
-         "$HERE"/hal/src/radio_net.cc "$HERE"/hal/src/main.cpp "$HERE"/tools/ndk-shim/stability_shim.cpp; do
+         "$HERE"/hal/src/radio_net.cc "$HERE"/hal/src/voice_audio.cc "$HERE"/hal/src/main.cpp "$HERE"/tools/ndk-shim/stability_shim.cpp; do
   n=$((n+1)); o="$OUT/obj/$n-$(basename "$f").o"
   "$CXX" -std=c++20 "${CFLAGS_COMMON[@]}" "${INCS[@]}" "${SHIM[@]}" -c "$f" -o "$o"; objs+=("$o")
 done
