@@ -260,7 +260,8 @@ int main(int argc, char** argv) {
         hal.messaging->sendSms(42, m);
         CHECK(gr->wait("sendSmsResponse:44"), "non-hex PDU -> INVALID_ARGUMENTS");
         CHECK(gi->wait("newSms", 6000), "incoming SMS indication");
-        CHECK(gi->pdu == unhex("0791448720003023040B916407281553F80000FF0AE8329BFD4697D9EC37"), "incoming SMS bytes intact");
+        /* the modem sends the bare TPDU; the HAL prepends the SMSC length octet 00 that Android expects */
+        CHECK(gi->pdu == unhex("00040B916407281553F80000FF0AE8329BFD4697D9EC37"), "incoming SMS: TPDU intact, SMSC octet 00 prepended");
         hal.messaging->acknowledgeLastIncomingGsmSms(43, true, radio::messaging::SmsAcknowledgeFailCause::UNSPECIFIED_ERROR);
         CHECK(gr->wait("acknowledgeLastIncomingGsmSmsResponse:0"), "SMS acknowledged");
         hal.messaging->getSmscAddress(44);

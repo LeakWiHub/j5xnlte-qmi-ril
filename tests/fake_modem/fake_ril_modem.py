@@ -14,7 +14,7 @@ from fake_modem import tlv, OK, frame, parse, card_status  # noqa: E402
 
 SEND_PDU = bytes.fromhex('00110007916407281553F80000AA0AE8329BFD4697D9EC37')
 SEND_PDU_FAIL = SEND_PDU[:-1] + b'\xFF'
-MT_SMS = bytes.fromhex('0791448720003023040B916407281553F80000FF0AE8329BFD4697D9EC37')
+MT_SMS = bytes.fromhex('040B916407281553F80000FF0AE8329BFD4697D9EC37')  # the real modem delivers the bare TPDU, no SMSC prefix (seen on the J5)
 MT_TXID = 0x1234
 ERR = lambda code: tlv(0x02, struct.pack('<HH', 1, code))
 ip_wire = lambda a: bytes(reversed(bytes(a)))
