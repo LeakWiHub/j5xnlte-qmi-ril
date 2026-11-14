@@ -167,6 +167,8 @@ class RadioVoiceImpl : public RadioVoiceBase {
     ::ndk::ScopedAStatus sendDtmf(int32_t in_serial, const std::string& in_s) override;
     ::ndk::ScopedAStatus startDtmf(int32_t in_serial, const std::string& in_s) override;
     ::ndk::ScopedAStatus stopDtmf(int32_t in_serial) override;
+    ::ndk::ScopedAStatus setMute(int32_t in_serial, bool in_enable) override;
+    ::ndk::ScopedAStatus getMute(int32_t in_serial) override;
     ::ndk::ScopedAStatus getLastCallFailCause(int32_t in_serial) override;
     void notifyCallsChanged();
 

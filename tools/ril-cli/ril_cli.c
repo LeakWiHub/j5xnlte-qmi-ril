@@ -118,8 +118,8 @@ static void show_sms(const uint8_t *pdu, size_t n)
     char from[24] = "?", text[200] = "";
     printf("  SMS PDU: "); hex(pdu, n); printf("\n");
     if (n < 2) return;
-    o = 1u + pdu[0];                       /* skip SMSC */
-    if (o + 12 > n || (pdu[o] & 3) != 0) { printf("  (not an SMS-DELIVER I can decode)\n"); return; }
+    o = 0;                                 /* QMI WMS delivers the bare TPDU (no SMSC prefix) */
+    if (o + 12 > n || (pdu[o] & 3) != 0 || n < 12) { printf("  (not an SMS-DELIVER I can decode)\n"); return; }
     {
         size_t nd = pdu[o + 1], k = 0;
         int intl = (pdu[o + 2] & 0x70) == 0x10;

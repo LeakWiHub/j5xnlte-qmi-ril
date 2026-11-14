@@ -210,7 +210,39 @@ void ril_wms_on_indication(struct ril_qmi *r, const qmi_msg_t *m)
             ril_ev_push(r, EV_SMS, ack_ind == 0, buf, len + 4); /* ack_indicator 0 = "send ACK required" */
         }
     } else if (qmi_tlv_find(m->tlvs, 0x10, &v) == 1) {
-        qmi_logf(QMI_LOG_WARN, "ril: SMS was stored on the modem instead of transferred (route not applied)");
+        qmi_logf(QMI_LOG_WARN, "ril: SMS was stored on the modem instead of transferred (route not applied), reading it from storage");
+        if (v.n >= 5) ril_ev_push(r, EV_SMS_STORED, 0, v.p, 5);
+    }
+}
+
+/* Fallback for a message the modem stored instead of transferring. Raw Read 0x0022 per libqmi (NOT verified on this
+ * modem): in 0x01 {storage u8, index u32}, 0x10 message mode u8 (1 = GSM/WCDMA); out 0x01 {tag u8, format u8,
+ * len u16, data}. Runs on the worker thread (a QMI request cannot be made from the reader thread). */
+void ril_wms_read_stored(struct ril_qmi *r, const uint8_t *loc, size_t len)
+{
+    uint8_t tl[24], rsp[512];
+    qmi_wbuf_t w;
+    qmi_span_t sp, v;
+    size_t n = 0;
+    int rc;
+    if (len < 5) return;
+    qmi_wbuf_init(&w, tl, sizeof(tl));
+    qmi_tlv_put(&w, 0x01, loc, 5);
+    qmi_tlv_put_u8(&w, 0x10, 1);
+    rc = ril_svcw(r, QMI_SVC_WMS, 0x0022, &w, 0, 0, rsp, sizeof(rsp), &n);
+    qmi_logf(QMI_LOG_WARN, "ril: WMS raw read of stored SMS (storage %u index %u) -> %d", loc[0],
+             (unsigned)loc[1] | ((unsigned)loc[2] << 8) | ((unsigned)loc[3] << 16) | ((unsigned)loc[4] << 24), rc);
+    if (rc) return;
+    sp.p = rsp; sp.n = n;
+    if (qmi_tlv_find(sp, 0x01, &v) == 1 && v.n >= 4) {
+        unsigned fmt = v.p[1], dl = (unsigned)v.p[2] | ((unsigned)v.p[3] << 8);
+        if (fmt == WMS_FORMAT_3GPP && dl > 0 && dl + 4 <= v.n && dl + 4 <= sizeof(((struct ril_ev_item *)0)->data)) {
+            uint8_t buf[sizeof(((struct ril_ev_item *)0)->data)];
+            memset(buf, 0, 4); /* no transaction id: nothing to acknowledge */
+            memcpy(buf + 4, v.p + 4, dl);
+            qmi_logf(QMI_LOG_WARN, "ril: incoming (stored) SMS %u bytes", dl);
+            ril_ev_push(r, EV_SMS, 0, buf, dl + 4);
+        } else qmi_logf(QMI_LOG_WARN, "ril: stored SMS has unexpected format 0x%02x len %u", fmt, dl);
     }
 }
 
@@ -498,6 +530,27 @@ static int iface_set(const char *ifname, int up, int mtu)
  * transmits). Set raw IP (2) for the DMUX channel's endpoint and read it back. Layouts per libqmi/ModemManager (not
  * verified on this modem): Set Data Format 0x0020: 0x10 qos(u8), 0x11 link layer(u32), 0x12 UL aggr(u32), 0x13 DL aggr(u32),
  * 0x17 endpoint {type u32, iface u32}; Get Data Format 0x0021: 0x10 endpoint. Failures are reported, not fatal. */
+/* Experiment switches without a rebuild: /data/local/tmp/j5ril-state/data.conf, lines "key=value".
+ *   wda=on|off     set raw IP on the DMUX endpoint before the call (default on)
+ *   bind=none|mux1|auto   WDS Bind Mux Data Port: none (default), mux 1 only, or try all variants */
+static void data_conf(const char *key, const char *def, char *out, size_t cap)
+{
+    char line[96];
+    size_t kl = strlen(key);
+    FILE *f = fopen("/data/local/tmp/j5ril-state/data.conf", "r");
+    snprintf(out, cap, "%s", def);
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        if (strncmp(line, key, kl) == 0 && line[kl] == '=') {
+            size_t i = 0;
+            snprintf(out, cap, "%s", line + kl + 1);
+            while (out[i] && out[i] != '\n' && out[i] != '\r' && out[i] != ' ') i++;
+            out[i] = 0;
+        }
+    }
+    fclose(f);
+}
+
 static void wda_set_raw_ip(struct ril_qmi *r, long port)
 {
     uint8_t tl[64], rsp[128], ep[8];
@@ -555,18 +608,28 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         snprintf(pth, sizeof(pth), "/sys/class/net/%s/dev_port", out->ifname);
         f = fopen(pth, "r");
         if (f) { if (fgets(buf, sizeof(buf), f)) port = strtol(buf, NULL, 0); fclose(f); }
-        wda_set_raw_ip(r, port);
-        {
+        char c_wda[16], c_bind[16];
+        data_conf("wda", "on", c_wda, sizeof(c_wda));
+        data_conf("bind", "none", c_bind, sizeof(c_bind));
+        qmi_logf(QMI_LOG_WARN, "ril: data setup knobs: wda=%s bind=%s (data.conf)", c_wda, c_bind);
+        fprintf(stderr, "ril: data setup knobs: wda=%s bind=%s (data.conf)\n", c_wda, c_bind);
+        if (strcmp(c_wda, "off") != 0) wda_set_raw_ip(r, port);
+        if (strcmp(c_bind, "none") != 0) {
             /* The modem answered 0x30 to the endpoint-only request; mux id / client type are optional in the IDL, but
              * try them in turn (all variants are harmless: they only configure this WDS client). The first success wins. */
-            static const struct { int mux; int client; } var[] = {
+            struct bindvar { int mux; int client; };
+            static const struct bindvar var_all[] = {
                 {-1, -1}, {0, -1}, {1, -1}, {0xFF, -1}, {-1, 1}, {1, 1}, {0xFF, 0xFF},
             };
+            static const struct bindvar var_mux1[] = { {1, -1} };
+            const int one = strcmp(c_bind, "mux1") == 0;
+            const struct bindvar *var = one ? var_mux1 : var_all;
+            const size_t nvar = one ? 1 : sizeof(var_all) / sizeof(var_all[0]);
             uint8_t ep[8];
             size_t vi;
             ep[0] = QMI_DATA_ENDPOINT_BAM_DMUX; ep[1] = ep[2] = ep[3] = 0;
             ep[4] = (uint8_t)port; ep[5] = (uint8_t)(port >> 8); ep[6] = ep[7] = 0;
-            for (vi = 0; vi < sizeof(var) / sizeof(var[0]); vi++) {
+            for (vi = 0; vi < nvar; vi++) {
                 qmi_wbuf_init(&w, tl, sizeof(tl));
                 qmi_tlv_put(&w, 0x10, ep, sizeof(ep));
                 if (var[vi].mux >= 0) qmi_tlv_put_u8(&w, 0x11, (uint8_t)var[vi].mux);

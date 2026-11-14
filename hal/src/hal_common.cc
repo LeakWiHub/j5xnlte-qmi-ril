@@ -123,6 +123,7 @@ static void qmiLog(int level, const char* msg) {
             : level == QMI_LOG_INFO ? ANDROID_LOG_INFO
                                     : ANDROID_LOG_DEBUG;
     __android_log_print(p, LOG_TAG, "%s", msg);
+    fprintf(stderr, "%s\n", msg);
 }
 
 void installQmiLogger() { qmi_set_logger(qmiLog, QMI_LOG_INFO); }
@@ -167,7 +168,16 @@ static void evSim(void* c) {
 }
 static void evNet(void* c) { H(c)->network->notifyNetworkChanged(); }
 static void evSig(void* c) { H(c)->network->notifySignalChanged(); }
-static void evSms(void* c, const uint8_t* pdu, size_t len, int) { H(c)->messaging->notifyNewSms(std::vector<uint8_t>(pdu, pdu + len)); }
+/* QMI WMS hands over the bare TPDU (first octet = TP flags; seen on the real modem: 0409D0D2E9... = SMS-DELIVER from an
+ * alphanumeric sender). Android's SMS parser expects the RIL convention SMSC-length octet + SMSC + TPDU, so without
+ * a prefix it reads the TP flags as an SMSC length and drops the message. Prepend a zero length (= no SMSC info). */
+static void evSms(void* c, const uint8_t* pdu, size_t len, int) {
+    std::vector<uint8_t> v;
+    v.reserve(len + 1);
+    v.push_back(0x00);
+    v.insert(v.end(), pdu, pdu + len);
+    H(c)->messaging->notifyNewSms(v);
+}
 static void evCalls(void* c) { H(c)->voice->notifyCallsChanged(); }
 static void evData(void* c, int up) { H(c)->data->notifyDataStatus(up != 0); }
 

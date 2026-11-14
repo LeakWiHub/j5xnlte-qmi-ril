@@ -7,7 +7,7 @@
 
 #include "ril_qmi.h"
 
-enum ril_ev_type { EV_READY = 1, EV_NOT_READY, EV_SIM, EV_NET, EV_SIG, EV_SMS, EV_CALLS, EV_DATA };
+enum ril_ev_type { EV_READY = 1, EV_NOT_READY, EV_SIM, EV_NET, EV_SIG, EV_SMS, EV_CALLS, EV_DATA, EV_SMS_STORED };
 
 struct ril_ev_item {
     int type;
@@ -75,6 +75,7 @@ void ril_wds_on_indication(struct ril_qmi *r, const qmi_msg_t *m);
 void ril_nas_register(struct ril_qmi *r);
 void ril_uim_register(struct ril_qmi *r);
 void ril_wms_register(struct ril_qmi *r);
+void ril_wms_read_stored(struct ril_qmi *r, const uint8_t *loc, size_t len); /* loc = storage u8, index u32 LE */
 void ril_voice_register(struct ril_qmi *r);
 void ril_wda_setup(struct ril_qmi *r);
 

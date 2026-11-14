@@ -599,6 +599,36 @@ void RadioVoiceImpl::dialCommon(int32_t serial, const std::string& number, bool 
     return ::ndk::ScopedAStatus::ok();
 }
 
+/* Microphone mute during a call. The voice DSP path has no mute of its own in the mainline stack, so the module's
+ * j5x-voice daemon applies it in the codec (TX decimator input -> ZERO); this only records the request. */
+static const char* kMicMuteFile = "/data/local/tmp/j5ril-state/mic_mute";
+static bool writeMicMute(bool on) {
+    mkdir("/data/local/tmp/j5ril-state", 0755);
+    std::string tmp = std::string(kMicMuteFile) + ".tmp";
+    FILE* f = fopen(tmp.c_str(), "w");
+    if (!f) return false;
+    bool ok = fputs(on ? "1\n" : "0\n", f) >= 0;
+    ok = (fclose(f) == 0) && ok;
+    return ok && rename(tmp.c_str(), kMicMuteFile) == 0;
+}
+static bool g_micMuted = false;
+
+::ndk::ScopedAStatus RadioVoiceImpl::setMute(int32_t serial, bool enable) {
+    REQUIRE_RESP(resp);
+    h_.exec.post([resp, serial, enable] {
+        bool ok = writeMicMute(enable);
+        if (ok) g_micMuted = enable;
+        resp->setMuteResponse(rspInfo(serial, ok ? RadioError::NONE : RadioError::INTERNAL_ERR));
+    });
+    return ::ndk::ScopedAStatus::ok();
+}
+
+::ndk::ScopedAStatus RadioVoiceImpl::getMute(int32_t serial) {
+    REQUIRE_RESP(resp);
+    h_.exec.post([resp, serial] { resp->getMuteResponse(rspInfo(serial, RadioError::NONE), g_micMuted); });
+    return ::ndk::ScopedAStatus::ok();
+}
+
 ::ndk::ScopedAStatus RadioVoiceImpl::stopDtmf(int32_t serial) {
     REQUIRE_RESP(resp);
     h_.exec.post([this, resp, serial] {

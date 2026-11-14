@@ -153,9 +153,21 @@ static void dispatch_event(struct ril_qmi *r, const struct ril_ev_item *e)
         break;
     case EV_SIM:
         sim_autoprovision(r);
+        /* the modem may have refused the SMS routes while the SIM was not ready: apply them again now */
+        if (r->ready) ril_wms_register(r);
         if (ev->on_sim_changed) ev->on_sim_changed(ev->ctx);
         break;
-    case EV_NET: if (ev->on_network_changed && r->ready) ev->on_network_changed(ev->ctx); break;
+    case EV_NET:
+        if (r->ready) {
+            static time_t last_wms;
+            time_t now = time(NULL);
+            if (now - last_wms >= 60) { last_wms = now; ril_wms_register(r); }
+        }
+        if (ev->on_network_changed && r->ready) ev->on_network_changed(ev->ctx);
+        break;
+    case EV_SMS_STORED:
+        ril_wms_read_stored(r, e->data, e->len);
+        break;
     case EV_SIG: if (ev->on_signal_changed) ev->on_signal_changed(ev->ctx); break;
     case EV_SMS:
         /* data = u32 LE modem transaction id, then SMSC + TPDU */
