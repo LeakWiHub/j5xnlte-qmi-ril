@@ -10,7 +10,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <arpa/inet.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -697,6 +699,33 @@ static int iface_set(const char *ifname, int up, int mtu)
     return rc;
 }
 
+/* Sets (or, with ip == NULL, removes) the IPv4 address of the data interface. Android does NOT do this for cellular: in
+ * the device log netd only gets interfaceSetMtu and the routes, and `ip addr` showed no IPv4 address although the
+ * framework believed it had one, so no IPv4 packet was ever sent. The vendor RIL has to configure the address.
+ * Never touches a loopback interface (the host tests use "lo"). Idempotent. */
+static int iface_set_addr(const char *ifname, const uint8_t ip[4], const uint8_t mask[4])
+{
+    struct ifreq ifr;
+    struct sockaddr_in *sin = (struct sockaddr_in *)&ifr.ifr_addr;
+    int s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0), rc = 0;
+    if (s < 0) return -errno;
+    memset(&ifr, 0, sizeof(ifr));
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+    if (ioctl(s, SIOCGIFFLAGS, &ifr) == 0 && (ifr.ifr_flags & IFF_LOOPBACK)) { close(s); return 0; }
+    memset(&ifr.ifr_ifru, 0, sizeof(ifr.ifr_ifru));
+    sin->sin_family = AF_INET;
+    if (ip) memcpy(&sin->sin_addr, ip, 4);
+    if (ioctl(s, SIOCSIFADDR, &ifr) < 0) rc = -errno;
+    if (!rc && ip && mask) {
+        memset(&ifr.ifr_ifru, 0, sizeof(ifr.ifr_ifru));
+        sin->sin_family = AF_INET;
+        memcpy(&sin->sin_addr, mask, 4);
+        if (ioctl(s, SIOCSIFNETMASK, &ifr) < 0) rc = -errno;
+    }
+    close(s);
+    return rc;
+}
+
 /* The BAM-DMUX netdev of the kernel carries raw IP, while the modem reported link layer 802.3 for its default endpoint.
  * A modem that expects Ethernet frames drops raw IP packets (seen: WDS packet counters stay 0 although the kernel
  * transmits). Set raw IP (2) for the DMUX channel's endpoint and read it back. Layouts per libqmi/ModemManager (not
@@ -886,8 +915,14 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         memset(out, 0, sizeof(*out));
         return -ENODATA;
     }
-    /* Addresses and routes are applied by the framework (netd) from the HAL result; here the link is only brought up. */
+    /* Routes and DNS are applied by the framework (netd) from the HAL result, the address is not: set it here. */
     rc = iface_set(out->ifname, 1, out->mtu);
+    if (!rc) {
+        rc = iface_set_addr(out->ifname, out->ip, out->mask);
+        qmi_logf(QMI_LOG_WARN, "ril: %s address %u.%u.%u.%u/%u.%u.%u.%u set -> %d", out->ifname, out->ip[0], out->ip[1], out->ip[2], out->ip[3],
+                 out->mask[0], out->mask[1], out->mask[2], out->mask[3], rc);
+        fprintf(stderr, "ril: %s address %u.%u.%u.%u set -> %d\n", out->ifname, out->ip[0], out->ip[1], out->ip[2], out->ip[3], rc);
+    }
     if (rc) {
         qmi_logf(QMI_LOG_ERROR, "ril: cannot bring %s up: %d", out->ifname, rc);
         (void)ril_data_stop(r, out->handle, NULL);
@@ -905,7 +940,10 @@ int ril_data_stop(ril_qmi_t *r, uint32_t handle, const char *ifname)
     qmi_wbuf_init(&w, tl, sizeof(tl));
     qmi_tlv_put_u32(&w, 0x01, handle);
     rc = ril_svcw(r, QMI_SVC_WDS, WDS_STOP_NETWORK, &w, 30000, 0, NULL, 0, NULL);
-    if (ifname && *ifname) (void)iface_set(ifname, 0, 0);
+    if (ifname && *ifname) {
+        (void)iface_set_addr(ifname, NULL, NULL);
+        (void)iface_set(ifname, 0, 0);
+    }
     /* an already dead session (invalid handle / out of call) counts as stopped */
     if (QMI_E_IS_QMI(rc) && (QMI_E_CODE(rc) == QMI_ERR_INVALID_HANDLE || QMI_E_CODE(rc) == QMI_ERR_OUT_OF_CALL)) return 0;
     return rc;

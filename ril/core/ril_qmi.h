@@ -187,8 +187,8 @@ typedef struct {
     int has_ip, has_gw, has_dns1, has_dns2;
     int mtu;
 } ril_data_call_t;
-/* Starts a packet data call and brings the Linux interface up with the modem MTU. Addresses and routes
- * are NOT set here: the framework (netd) applies them from the data call result. One call at a time. */
+/* Starts a packet data call, brings the Linux interface up with the modem MTU and sets its IPv4 address (Android does
+ * not for cellular). Routes and DNS are applied by the framework (netd) from the data call result. One call at a time. */
 int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out);
 int ril_data_stop(ril_qmi_t *r, uint32_t handle, const char *ifname);
 /* interface to use: $RIL_DATA_IFACE override, then the first rmnet* (not rmnet_ipa*), then wwan* */
