@@ -105,6 +105,15 @@ struct VoiceResp : RadioVoiceRecResponse {
         return RadioVoiceRecResponse::getCurrentCallsResponse(i, c);
     }
 };
+struct VoiceInd : RadioVoiceRecIndication {
+    radio::voice::UssdModeType mode = radio::voice::UssdModeType::NW_TIMEOUT;
+    std::string msg;
+    ::ndk::ScopedAStatus onUssd(radio::RadioIndicationType t, radio::voice::UssdModeType m, const std::string& s) override {
+        mode = m;
+        msg = s;
+        return RadioVoiceRecIndication::onUssd(t, m, s);
+    }
+};
 struct DataResp : RadioDataRecResponse {
     radio::data::SetupDataCallResult dc;
     std::vector<radio::data::SetupDataCallResult> list;
@@ -145,7 +154,7 @@ int main(int argc, char** argv) {
     auto gr = std::make_shared<MsgResp>();
     auto gi = std::make_shared<MsgInd>();
     auto vr = std::make_shared<VoiceResp>();
-    auto vi = std::make_shared<RadioVoiceRecIndication>();
+    auto vi = std::make_shared<VoiceInd>();
     auto dr = std::make_shared<DataResp>();
     auto di = std::make_shared<RadioDataRecIndication>();
     auto cr = std::make_shared<CfgResp>();
@@ -298,6 +307,17 @@ int main(int argc, char** argv) {
         CHECK(vr->wait("conferenceResponse:6"), "conference not implemented -> REQUEST_NOT_SUPPORTED");
         hal.voice->hangup(58, 1);
         CHECK(vr->wait("hangupConnectionResponse:0"), "hangup incoming->active call");
+        /* USSD: text in the QMI response -> NOTIFY; menu as an indication -> REQUEST */
+        hal.voice->sendUssd(60, "*100#");
+        CHECK(vr->wait("sendUssdResponse:0") && vi->wait("onUssd") && vi->mode == radio::voice::UssdModeType::NOTIFY && vi->msg == "Balance 12.50 RUB",
+              "USSD *100# -> response OK and onUssd(NOTIFY, '%s')", vi->msg.c_str());
+        hal.voice->sendUssd(61, "*101#");
+        for (int i = 0; i < 300 && (vi->count("onUssd") < 2 || vr->count("sendUssdResponse:0") < 2); i++)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        CHECK(vr->count("sendUssdResponse:0") == 2 && vi->count("onUssd") == 2 && vi->mode == radio::voice::UssdModeType::REQUEST,
+              "USSD menu -> second response OK and onUssd(REQUEST)");
+        hal.voice->cancelPendingUssd(62);
+        CHECK(vr->wait("cancelPendingUssdResponse:0"), "cancelPendingUssd answered");
     }
 
     /* ---- data ---- */

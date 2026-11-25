@@ -36,6 +36,11 @@
 #define VOICE_ANSWER_CALL 0x0022
 #define VOICE_START_CONT_DTMF 0x0025
 #define VOICE_STOP_CONT_DTMF 0x0026
+#define VOICE_ORIG_USSD 0x003A
+#define VOICE_ANSWER_USSD 0x003B
+#define VOICE_CANCEL_USSD 0x003C
+#define VOICE_USSD_RELEASE_IND 0x003D
+#define VOICE_USSD_IND 0x003E
 #define VOICE_ALL_CALL_STATUS_IND 0x002E
 #define VOICE_GET_ALL_CALL_INFO 0x002F
 
@@ -316,8 +321,172 @@ static int voice_update_cache(struct ril_qmi *r, qmi_span_t tlvs, uint8_t t_call
     return 0;
 }
 
+/* ------------------------------------------------------------------ USSD */
+/* QmiVoiceUssDataCodingScheme: 1 ASCII, 2 8-bit, 3 UCS2 (UTF-16BE). Layouts per libqmi; ModemManager uses the same. */
+static int utf8_next(const uint8_t *s, size_t l, size_t *i, uint32_t *cp)
+{
+    uint8_t c = s[*i];
+    size_t k, j;
+    if (c < 0x80) { *cp = c; k = 1; }
+    else if ((c & 0xE0) == 0xC0) { *cp = c & 0x1F; k = 2; }
+    else if ((c & 0xF0) == 0xE0) { *cp = c & 0x0F; k = 3; }
+    else if ((c & 0xF8) == 0xF0) { *cp = c & 0x07; k = 4; }
+    else return -EINVAL;
+    if (*i + k > l) return -EINVAL;
+    for (j = 1; j < k; j++) {
+        if ((s[*i + j] & 0xC0) != 0x80) return -EINVAL;
+        *cp = (*cp << 6) | (s[*i + j] & 0x3F);
+    }
+    *i += k;
+    return 0;
+}
+
+static int ussd_encode(const char *text, uint8_t *dcs, uint8_t *out, size_t cap, size_t *n)
+{
+    const uint8_t *s = (const uint8_t *)text;
+    size_t l = strlen(text), i = 0, o = 0;
+    int ascii = 1;
+    for (i = 0; i < l; i++)
+        if (s[i] >= 0x80) ascii = 0;
+    if (ascii) {
+        if (l > cap) return -EMSGSIZE;
+        memcpy(out, s, l);
+        *dcs = 1;
+        *n = l;
+        return 0;
+    }
+    i = 0;
+    while (i < l) {
+        uint32_t cp;
+        if (utf8_next(s, l, &i, &cp)) return -EINVAL;
+        if (cp >= 0x10000) {
+            uint32_t v = cp - 0x10000, hi = 0xD800 | (v >> 10), lo = 0xDC00 | (v & 0x3FF);
+            if (o + 4 > cap) return -EMSGSIZE;
+            out[o++] = (uint8_t)(hi >> 8); out[o++] = (uint8_t)hi;
+            out[o++] = (uint8_t)(lo >> 8); out[o++] = (uint8_t)lo;
+        } else {
+            if (o + 2 > cap) return -EMSGSIZE;
+            out[o++] = (uint8_t)(cp >> 8); out[o++] = (uint8_t)cp;
+        }
+    }
+    *dcs = 3;
+    *n = o;
+    return 0;
+}
+
+static size_t put_utf8(char *o, size_t cap, size_t pos, uint32_t cp)
+{
+    uint8_t b[4];
+    size_t k, j;
+    if (cp < 0x80) { b[0] = (uint8_t)cp; k = 1; }
+    else if (cp < 0x800) { b[0] = 0xC0 | (cp >> 6); b[1] = 0x80 | (cp & 0x3F); k = 2; }
+    else if (cp < 0x10000) { b[0] = 0xE0 | (cp >> 12); b[1] = 0x80 | ((cp >> 6) & 0x3F); b[2] = 0x80 | (cp & 0x3F); k = 3; }
+    else { b[0] = 0xF0 | (cp >> 18); b[1] = 0x80 | ((cp >> 12) & 0x3F); b[2] = 0x80 | ((cp >> 6) & 0x3F); b[3] = 0x80 | (cp & 0x3F); k = 4; }
+    if (pos + k + 1 > cap) return pos;
+    for (j = 0; j < k; j++) o[pos + j] = (char)b[j];
+    return pos + k;
+}
+
+/* units: UTF-16 bytes (be = big endian) -> UTF-8 */
+static size_t utf16_to_utf8(const uint8_t *d, size_t n, int be, char *out, size_t cap)
+{
+    size_t i, pos = 0;
+    for (i = 0; i + 1 < n; i += 2) {
+        uint32_t u = be ? ((uint32_t)d[i] << 8 | d[i + 1]) : ((uint32_t)d[i + 1] << 8 | d[i]);
+        if (u >= 0xD800 && u < 0xDC00 && i + 3 < n) {
+            uint32_t u2 = be ? ((uint32_t)d[i + 2] << 8 | d[i + 3]) : ((uint32_t)d[i + 3] << 8 | d[i + 2]);
+            if (u2 >= 0xDC00 && u2 < 0xE000) { u = 0x10000 + ((u - 0xD800) << 10) + (u2 - 0xDC00); i += 2; }
+        }
+        pos = put_utf8(out, cap, pos, u);
+    }
+    out[pos] = 0;
+    return pos;
+}
+
+/* TLV with {u8 dcs, u8 len, bytes} (0x12 in responses, 0x10 in the indication) and TLV with UTF-16LE (0x16 / 0x11) */
+static void ussd_text(qmi_span_t tlvs, uint8_t uss_id, uint8_t utf16_id, char *out, size_t cap)
+{
+    qmi_span_t v;
+    out[0] = 0;
+    if (qmi_tlv_find(tlvs, utf16_id, &v) == 1 && v.n >= 1) {
+        size_t cnt = v.p[0];
+        if (cnt * 2 + 1 > v.n) cnt = (v.n - 1) / 2;
+        if (cnt) { utf16_to_utf8(v.p + 1, cnt * 2, 0, out, cap); return; }
+    }
+    if (qmi_tlv_find(tlvs, uss_id, &v) == 1 && v.n >= 2) {
+        uint8_t dcs = v.p[0];
+        size_t len = v.p[1], i, pos = 0;
+        if (len + 2 > v.n) len = v.n - 2;
+        if (dcs == 3) { utf16_to_utf8(v.p + 2, len, 1, out, cap); return; }
+        for (i = 0; i < len; i++) pos = put_utf8(out, cap, pos, v.p[2 + i]);   /* ASCII / 8-bit: bytes as Latin-1 */
+        out[pos] = 0;
+    }
+}
+
+int ril_ussd_send(ril_qmi_t *r, const char *text, char *reply, size_t cap)
+{
+    uint8_t tl[300], rsp[1100], enc[200], body[210];
+    qmi_wbuf_t w;
+    qmi_span_t sp;
+    size_t n = 0, el = 0;
+    uint8_t dcs = 0;
+    int rc, answer;
+    if (reply && cap) reply[0] = 0;
+    if (!text || !*text) return -EINVAL;
+    rc = ussd_encode(text, &dcs, enc, sizeof(enc), &el);
+    if (rc) return rc;
+    body[0] = dcs;
+    body[1] = (uint8_t)el;
+    memcpy(body + 2, enc, el);
+    qmi_wbuf_init(&w, tl, sizeof(tl));
+    qmi_tlv_put(&w, 0x01, body, 2 + el);
+    pthread_mutex_lock(&r->mu);
+    answer = r->ussd_open;
+    r->ussd_open = 0;   /* an indication that arrives while we wait sets it again */
+    pthread_mutex_unlock(&r->mu);
+    /* never retried: a repeated request would be a second USSD session */
+    rc = ril_svcw(r, QMI_SVC_VOICE, answer ? VOICE_ANSWER_USSD : VOICE_ORIG_USSD, &w, 100000, 0, rsp, sizeof(rsp), &n);
+    if (rc) return rc;
+    if (!answer && reply && cap > 1) {
+        sp.p = rsp;
+        sp.n = n;
+        ussd_text(sp, 0x12, 0x16, reply, cap);
+    }
+    return 0;
+}
+
+int ril_ussd_cancel(ril_qmi_t *r)
+{
+    int rc = ril_svc(r, QMI_SVC_VOICE, VOICE_CANCEL_USSD, NULL, 0, 15000, 0, NULL, 0, NULL);
+    pthread_mutex_lock(&r->mu);
+    r->ussd_open = 0;
+    pthread_mutex_unlock(&r->mu);
+    return rc;
+}
+
 void ril_voice_on_indication(struct ril_qmi *r, const qmi_msg_t *m)
 {
+    if (m->msg_id == VOICE_USSD_IND) {
+        char text[1000];
+        qmi_span_t v;
+        int action = 0;
+        ussd_text(m->tlvs, 0x10, 0x11, text, sizeof(text));
+        if (qmi_tlv_find(m->tlvs, 0x01, &v) == 1 && v.n >= 1) action = v.p[0];   /* 1 not required, 2 required */
+        pthread_mutex_lock(&r->mu);
+        r->ussd_open = action == 2;
+        pthread_mutex_unlock(&r->mu);
+        qmi_logf(QMI_LOG_INFO, "ril: USSD indication, action %d, %zu bytes", action, strlen(text));
+        ril_ev_push(r, EV_USSD, action == 2 ? 1 : 0, (const uint8_t *)text, strlen(text));
+        return;
+    }
+    if (m->msg_id == VOICE_USSD_RELEASE_IND) {
+        pthread_mutex_lock(&r->mu);
+        r->ussd_open = 0;
+        pthread_mutex_unlock(&r->mu);
+        qmi_logf(QMI_LOG_INFO, "ril: USSD released by the network");
+        ril_ev_push(r, EV_USSD, 2, NULL, 0);
+        return;
+    }
     if (m->msg_id != VOICE_ALL_CALL_STATUS_IND) return;
     if (voice_update_cache(r, m->tlvs, 0x01, 0x10) == 0) ril_ev_push(r, EV_CALLS, 0, NULL, 0);
     else qmi_logf(QMI_LOG_ERROR, "ril: malformed All Call Status indication");
@@ -337,11 +506,12 @@ static int voice_refresh(struct ril_qmi *r)
 
 void ril_voice_register(struct ril_qmi *r)
 {
-    uint8_t tl[8];
+    uint8_t tl[12];
     qmi_wbuf_t w;
     int rc;
     qmi_wbuf_init(&w, tl, sizeof(tl));
     qmi_tlv_put_u8(&w, 0x10, 1); /* DTMF events; call status indications are expected without registration [UNVERIFIED] */
+    qmi_tlv_put_u8(&w, 0x16, 1); /* USSD notification events (libqmi: Indication Register, TLV 0x16) */
     rc = ril_svcw(r, QMI_SVC_VOICE, VOICE_INDICATION_REGISTER, &w, 0, 0, NULL, 0, NULL);
     if (rc) qmi_logf(QMI_LOG_WARN, "ril: VOICE indication registration failed (%d)", rc);
     (void)voice_refresh(r);
@@ -654,6 +824,12 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         }
     }
 
+    /* BAM-DMUX: opening the netdev sends the OPEN command for the channel to the modem (qcom_bam_dmux, ndo_open). Do it
+     * BEFORE the data call starts, like the downstream stack does; previously the link came up only after Start Network. */
+    rc = iface_set(out->ifname, 1, 0);
+    qmi_logf(QMI_LOG_WARN, "ril: %s brought up before Start Network -> %d", out->ifname, rc);
+    fprintf(stderr, "ril: %s brought up before Start Network -> %d\n", out->ifname, rc);
+
     /* IPv4 only: the family preference is best effort, an unsupported command is not fatal */
     qmi_wbuf_init(&w, tl, sizeof(tl));
     qmi_tlv_put_u8(&w, 0x01, 4);
@@ -668,7 +844,10 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
     qmi_tlv_put_u8(&w, 0x19, 4);
     if (!qmi_wbuf_ok(&w)) return -EMSGSIZE;
     rc = ril_svcw(r, QMI_SVC_WDS, WDS_START_NETWORK, &w, 60000, 0, rsp, sizeof(rsp), &n);
-    if (rc) return rc;
+    if (rc) {
+        (void)iface_set(out->ifname, 0, 0);
+        return rc;
+    }
     sp.p = rsp;
     sp.n = n;
     if (qmi_tlv_find(sp, 0x01, &v) != 1 || v.n < 4) return -EPROTO;
@@ -734,6 +913,33 @@ int ril_data_stop(ril_qmi_t *r, uint32_t handle, const char *ifname)
 
 /* WDS packet statistics straight from the modem (diagnostics). The response TLVs are returned raw; the caller prints them.
  * The BAM-DMUX netdev of the kernel keeps no counters at all, so this is the only way to see whether the modem got packets. */
+/* One line into the log: kernel counters of the netdev next to the modem's own WDS counters. If the kernel transmits and
+ * the modem counts nothing, the packets die between BAM-DMUX and the modem; if the modem counts TX but the kernel gets no
+ * RX, the answer is lost in the other direction. */
+void ril_data_diag(ril_qmi_t *r, const char *ifname, const char *tag)
+{
+    static const char *const names[] = {"rx_packets", "tx_packets", "rx_dropped", "tx_dropped", "tx_errors", "rx_errors"};
+    char line[512], pth[128], buf[32];
+    uint8_t st[256];
+    size_t n = 0, i, o = 0;
+    int rc;
+    o += (size_t)snprintf(line + o, sizeof(line) - o, "ril: data diag %s %s kernel:", tag, ifname);
+    for (i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        FILE *f;
+        buf[0] = 0;
+        snprintf(pth, sizeof(pth), "/sys/class/net/%s/statistics/%s", ifname, names[i]);
+        f = fopen(pth, "r");
+        if (f) { if (!fgets(buf, sizeof(buf), f)) buf[0] = 0; fclose(f); }
+        buf[strcspn(buf, "\n")] = 0;
+        o += (size_t)snprintf(line + o, sizeof(line) - o, " %s=%s", names[i], buf[0] ? buf : "?");
+    }
+    rc = ril_data_pkt_stats(r, st, sizeof(st), &n);
+    o += (size_t)snprintf(line + o, sizeof(line) - o, " | modem WDS stats rc=%d:", rc);
+    for (i = 0; rc == 0 && i < n && i < 60 && o + 4 < sizeof(line); i++) o += (size_t)snprintf(line + o, sizeof(line) - o, "%02x", st[i]);
+    qmi_logf(QMI_LOG_WARN, "%s", line);
+    fprintf(stderr, "%s\n", line);
+}
+
 int ril_data_pkt_stats(ril_qmi_t *r, uint8_t *out, size_t cap, size_t *outlen)
 {
     uint8_t tl[16];

@@ -7,6 +7,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -170,7 +171,11 @@ class RadioVoiceImpl : public RadioVoiceBase {
     ::ndk::ScopedAStatus setMute(int32_t in_serial, bool in_enable) override;
     ::ndk::ScopedAStatus getMute(int32_t in_serial) override;
     ::ndk::ScopedAStatus getLastCallFailCause(int32_t in_serial) override;
+    ::ndk::ScopedAStatus sendUssd(int32_t in_serial, const std::string& in_ussd) override;
+    ::ndk::ScopedAStatus cancelPendingUssd(int32_t in_serial) override;
     void notifyCallsChanged();
+    /* type = UssdModeType value (0 NOTIFY, 1 REQUEST, 2 NW_RELEASE) */
+    void notifyUssd(int type, const std::string& text);
 
   private:
     struct Snapshot {
@@ -184,6 +189,9 @@ class RadioVoiceImpl : public RadioVoiceBase {
     Hal& h_;
     std::mutex mu_;
     std::map<int, int> idToIndex_; /* QMI call id -> stable Android index */
+    bool ussdPending_ = false;     /* Android sent a USSD request and has not seen the answer yet */
+    std::string lastUssd_;         /* the same text may come both in the response and as an indication */
+    std::chrono::steady_clock::time_point lastUssdAt_{};
 };
 
 class RadioDataImpl : public RadioDataBase {

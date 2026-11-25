@@ -41,6 +41,18 @@ static void on_net(void *c) { (void)c; atomic_fetch_add(&g_net, 1); }
 static void on_sig(void *c) { (void)c; atomic_fetch_add(&g_sig, 1); }
 static void on_calls(void *c) { (void)c; atomic_fetch_add(&g_calls, 1); }
 static void on_data(void *c, int up) { (void)c; atomic_fetch_add(&g_data, up ? 1 : 100); }
+static atomic_int g_ussd;
+static char g_ussd_text[1100];
+static int g_ussd_type = -1;
+static void on_ussd(void *c, int type, const char *t)
+{
+    (void)c;
+    pthread_mutex_lock(&g_mu);
+    snprintf(g_ussd_text, sizeof(g_ussd_text), "%s", t);
+    g_ussd_type = type;
+    pthread_mutex_unlock(&g_mu);
+    atomic_fetch_add(&g_ussd, 1);
+}
 static void on_sms(void *c, const uint8_t *p, size_t n, int ack)
 {
     (void)c;
@@ -70,7 +82,7 @@ static const uint8_t MT_SMS[] = {0x04, 0x0B, 0x91, 0x64, 0x07, 0x28, 0x15,
 
 int main(int argc, char **argv)
 {
-    ril_events_t ev = {on_state, on_sim, on_net, on_sig, on_sms, on_calls, on_data, NULL};
+    ril_events_t ev = {on_state, on_sim, on_net, on_sig, on_sms, on_calls, on_data, NULL, on_ussd};
     const uint8_t mf_adf[] = {0x3F, 0x00, 0x7F, 0xFF};
     ril_qmi_t *r;
     int rc;
@@ -176,6 +188,29 @@ int main(int argc, char **argv)
         CHECK(rc == 0 && n == 1 && cl[0].state == RIL_CALL_ACTIVE && !cl[0].incoming && !strcmp(cl[0].number, "+79001234567"),
               "outgoing call ACTIVE n=%zu state=%d", n, n ? cl[0].state : -1);
         CHECK(ril_voice_dtmf(r, 1, '5', 1) == 0 && ril_voice_dtmf(r, 1, '5', 0) == 0, "DTMF start/stop");
+        {
+            char reply[1000];
+            int ty;
+            CHECK(ril_ussd_send(r, "*100#", reply, sizeof(reply)) == 0 && !strcmp(reply, "Balance 12.50 RUB"),
+                  "USSD request answered in the response (ASCII): '%s'", reply);
+            CHECK(ril_ussd_send(r, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82", reply, sizeof(reply)) == 0 &&
+                  !strcmp(reply, "\xD0\x9F\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"),
+                  "USSD with non-ASCII text goes out as UCS2 and the UTF-16 answer decodes: '%s'", reply);
+            CHECK(ril_ussd_send(r, "*101#", reply, sizeof(reply)) == 0 && reply[0] == 0, "USSD request without text in the response");
+            CHECK(wait_for(&g_ussd, 1, 3000), "USSD menu indication delivered");
+            pthread_mutex_lock(&g_mu);
+            ty = g_ussd_type;
+            CHECK(ty == 1 && !strcmp(g_ussd_text, "\xD0\x9C\xD0\xB5\xD0\xBD\xD1\x8E: 1 - \xD0\xB4\xD0\xB0"),
+                  "menu is a REQUEST (type %d) with decoded UCS2 text '%s'", ty, g_ussd_text);
+            pthread_mutex_unlock(&g_mu);
+            CHECK(ril_ussd_send(r, "1", reply, sizeof(reply)) == 0, "USSD answer to the menu goes to Answer USSD");
+            CHECK(wait_for(&g_ussd, 3, 3000), "final text and network release delivered");
+            pthread_mutex_lock(&g_mu);
+            ty = g_ussd_type;
+            pthread_mutex_unlock(&g_mu);
+            CHECK(ty == 2, "last USSD event is NW_RELEASE (type %d)", ty);
+            CHECK(ril_ussd_cancel(r) == 0, "USSD cancel");
+        }
         before = atomic_load(&g_calls);
         CHECK(ril_voice_hangup(r, 1) == 0, "hangup");
         CHECK(wait_for(&g_calls, before + 3, 4000), "hangup + incoming call indications delivered");

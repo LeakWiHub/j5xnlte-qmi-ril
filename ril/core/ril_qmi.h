@@ -35,6 +35,9 @@ typedef struct {
     void (*on_calls_changed)(void *ctx);
     void (*on_data_status)(void *ctx, int connected);
     void *ctx;
+    /* appended after ctx so older positional initialisers keep working (the field is then NULL).
+     * type = android.hardware.radio.voice.UssdModeType: 0 NOTIFY, 1 REQUEST (answer needed), 2 NW_RELEASE */
+    void (*on_ussd)(void *ctx, int type, const char *utf8);
 } ril_events_t;
 
 /* Starts the transport and the worker. Never blocks on the modem; ready state arrives via callback. */
@@ -165,6 +168,12 @@ int ril_voice_answer(ril_qmi_t *r, int call_id);
 int ril_voice_calls(ril_qmi_t *r, ril_call_t *out, size_t max, size_t *count);   /* refreshes from the modem, falls back to the indication cache */
 int ril_voice_dtmf(ril_qmi_t *r, int call_id, char digit, int start);
 
+/* USSD [IDL per libqmi qmi-service-voice.json: Originate 0x3A, Answer 0x3B, Cancel 0x3C, indications 0x3D/0x3E].
+ * Blocking (up to 100 s). Sends the text as a new request, or as the answer when the network is waiting for one.
+ * reply gets the text carried by the response (may stay empty: then the text comes as an indication / on_ussd). */
+int ril_ussd_send(ril_qmi_t *r, const char *utf8, char *reply, size_t cap);
+int ril_ussd_cancel(ril_qmi_t *r);
+
 /* ---------------- WDS ---------------- */
 typedef struct {
     char apn[100], user[64], pass[64];
@@ -185,6 +194,7 @@ int ril_data_stop(ril_qmi_t *r, uint32_t handle, const char *ifname);
 /* interface to use: $RIL_DATA_IFACE override, then the first rmnet* (not rmnet_ipa*), then wwan* */
 int ril_data_find_iface(char *out, size_t cap);
 int ril_data_pkt_stats(ril_qmi_t *r, uint8_t *out, size_t cap, size_t *outlen); /* raw TLVs of WDS 0x24 */
+void ril_data_diag(ril_qmi_t *r, const char *ifname, const char *tag);          /* kernel + modem counters into the log */
 
 #ifdef __cplusplus
 }

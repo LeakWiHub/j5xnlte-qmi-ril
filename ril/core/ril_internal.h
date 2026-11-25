@@ -7,13 +7,13 @@
 
 #include "ril_qmi.h"
 
-enum ril_ev_type { EV_READY = 1, EV_NOT_READY, EV_SIM, EV_NET, EV_SIG, EV_SMS, EV_CALLS, EV_DATA, EV_SMS_STORED };
+enum ril_ev_type { EV_READY = 1, EV_NOT_READY, EV_SIM, EV_NET, EV_SIG, EV_SMS, EV_CALLS, EV_DATA, EV_SMS_STORED, EV_USSD };
 
 struct ril_ev_item {
     int type;
     int arg;
     size_t len;
-    uint8_t data[300];
+    uint8_t data[1100];
 };
 
 #define RIL_EVQ 64
@@ -35,6 +35,8 @@ struct ril_qmi {
     struct ril_ev_item q[RIL_EVQ];
     int qh, qn;
     unsigned long dropped_events;
+
+    int ussd_open;     /* the network waits for the user's answer (USSD indication with "action required") */
 
     /* voice call cache, fed by All Call Status indications */
     ril_call_t calls[RIL_MAX_CALLS];

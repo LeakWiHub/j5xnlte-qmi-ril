@@ -12,6 +12,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
+#include <vector>
 
 #include <aidl/android/hardware/radio/RadioAccessFamily.h>
 #include <aidl/android/hardware/radio/RadioConst.h>
@@ -657,6 +659,60 @@ static bool g_micMuted = false;
     return ::ndk::ScopedAStatus::ok();
 }
 
+/* USSD: the request blocks up to 100 s in the modem, so it runs on its own thread (the shared executor must not stall).
+ * The answer text arrives either in the QMI response or as a USSD indication; both end up in onUssd. */
+::ndk::ScopedAStatus RadioVoiceImpl::sendUssd(int32_t serial, const std::string& ussd) {
+    REQUIRE_RESP(resp);
+    {
+        std::lock_guard<std::mutex> l(mu_);
+        ussdPending_ = true;
+    }
+    std::thread([this, resp, serial, ussd] {
+        std::vector<char> reply(1000, 0);
+        int rc = ril_ussd_send(h_.ril, ussd.c_str(), reply.data(), reply.size());
+        if (rc != 0) {
+            std::lock_guard<std::mutex> l(mu_);
+            ussdPending_ = false;
+        }
+        resp->sendUssdResponse(rspInfo(serial, mapError(rc)));
+        if (rc == 0 && reply[0]) notifyUssd(0, reply.data());
+    }).detach();
+    return ::ndk::ScopedAStatus::ok();
+}
+
+::ndk::ScopedAStatus RadioVoiceImpl::cancelPendingUssd(int32_t serial) {
+    REQUIRE_RESP(resp);
+    std::thread([this, resp, serial] {
+        int rc = ril_ussd_cancel(h_.ril);
+        {
+            std::lock_guard<std::mutex> l(mu_);
+            ussdPending_ = false;
+        }
+        resp->cancelPendingUssdResponse(rspInfo(serial, mapError(rc)));
+    }).detach();
+    return ::ndk::ScopedAStatus::ok();
+}
+
+void RadioVoiceImpl::notifyUssd(int type, const std::string& text) {
+    auto ind = mInd;
+    if (!ind) return;
+    {
+        std::lock_guard<std::mutex> l(mu_);
+        auto now = std::chrono::steady_clock::now();
+        if (type == 2) {
+            /* a release only matters to a request that is still waiting; otherwise Android would show an empty dialog */
+            if (!ussdPending_) return;
+            ussdPending_ = false;
+        } else {
+            if (text == lastUssd_ && now - lastUssdAt_ < std::chrono::seconds(3)) return;
+            lastUssd_ = text;
+            lastUssdAt_ = now;
+            ussdPending_ = false;
+        }
+    }
+    ind->onUssd(RadioIndicationType::UNSOLICITED, static_cast<radio::voice::UssdModeType>(type), text);
+}
+
 /* The QMI end-of-call reason is not decoded by this backend: the true answer is "unspecified". */
 ::ndk::ScopedAStatus RadioVoiceImpl::getLastCallFailCause(int32_t serial) {
     REQUIRE_RESP(resp);
@@ -738,6 +794,13 @@ static constexpr int kCid = 1; /* this backend runs at most one data call */
             h_.dataCall.dc = dc;
         }
         (void)resp->setupDataCallResponse(rspInfo(serial), resultFrom(dc, kCid));
+        /* evidence for the next round without manual collection: counters 20 s and 60 s after the call came up */
+        std::thread([this, ifn = std::string(dc.ifname)] {
+            std::this_thread::sleep_for(std::chrono::seconds(20));
+            if (h_.ready()) ril_data_diag(h_.ril, ifn.c_str(), "t+20s");
+            std::this_thread::sleep_for(std::chrono::seconds(40));
+            if (h_.ready()) ril_data_diag(h_.ril, ifn.c_str(), "t+60s");
+        }).detach();
     });
     return ::ndk::ScopedAStatus::ok();
 }

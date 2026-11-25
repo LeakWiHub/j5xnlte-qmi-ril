@@ -180,10 +180,11 @@ static void evSms(void* c, const uint8_t* pdu, size_t len, int) {
 }
 static void evCalls(void* c) { H(c)->voice->notifyCallsChanged(); }
 static void evData(void* c, int up) { H(c)->data->notifyDataStatus(up != 0); }
+static void evUssd(void* c, int type, const char* text) { H(c)->voice->notifyUssd(type, text ? text : ""); }
 
 bool Hal::start(const char* dev) {
     installQmiLogger();
-    ril_events_t ev = {evModemState, evSim, evNet, evSig, evSms, evCalls, evData, this};
+    ril_events_t ev = {evModemState, evSim, evNet, evSig, evSms, evCalls, evData, this, evUssd};
     ril = ril_qmi_create(dev, &ev);
     return ril != nullptr;
 }

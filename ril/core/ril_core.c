@@ -183,6 +183,15 @@ static void dispatch_event(struct ril_qmi *r, const struct ril_ev_item *e)
         break;
     case EV_CALLS: if (ev->on_calls_changed) ev->on_calls_changed(ev->ctx); break;
     case EV_DATA: if (ev->on_data_status) ev->on_data_status(ev->ctx, e->arg); break;
+    case EV_USSD:
+        /* arg = UssdModeType; data = UTF-8 text without NUL */
+        if (ev->on_ussd) {
+            char t[sizeof(e->data) + 1];
+            memcpy(t, e->data, e->len);
+            t[e->len] = 0;
+            ev->on_ussd(ev->ctx, e->arg, t);
+        }
+        break;
     }
 }
 

@@ -199,8 +199,36 @@ class Modem:
                 self.check('voice dtmf start call+digit', from_tlv(0x01) == b'\x01' + b'5')
                 return OK
             if msg == 0x0026: return OK
+            if msg == 0x003A:   # Originate USSD: {dcs u8, len u8, data}; layout from libqmi
+                d = from_tlv(0x01)
+                self.check('ussd originate: length prefix matches', d is not None and d[1] == len(d) - 2)
+                if d[0] == 1 and d[2:] == b'*100#':
+                    txt = b'Balance 12.50 RUB'
+                    return OK + tlv(0x12, b'\x01' + bytes([len(txt)]) + txt)
+                if d[0] == 3 and d[2:] == 'Привет'.encode('utf-16-be'):
+                    u = 'Привет'.encode('utf-16-le')
+                    return OK + tlv(0x16, bytes([len(u) // 2]) + u)
+                if d[0] == 1 and d[2:] == b'*101#':
+                    menu = 'Меню: 1 - да'.encode('utf-16-be')
+                    self.later(0.2, self.ind, 9, 0x003E, tlv(0x01, b'\x02') + tlv(0x10, b'\x03' + bytes([len(menu)]) + menu))
+                    return OK
+                self.check('ussd originate: unexpected request %r' % d, False)
+                return ERR(0x0001)
+            if msg == 0x003B:   # Answer USSD
+                d = from_tlv(0x01)
+                self.check('ussd answer is "1" in ASCII', d == b'\x01\x01' + b'1')
+                done = 'Готово'.encode('utf-16-le')
+                self.later(0.2, self.ind, 9, 0x003E, tlv(0x01, b'\x01') + tlv(0x11, bytes([len(done) // 2]) + done))
+                self.later(0.4, self.ind, 9, 0x003D, b'')
+                return OK
+            if msg == 0x003C:
+                self.seen.add('ussd_cancel')
+                return OK
         if svc == 1:   # WDS
             if msg == 0x004D: return OK
+            if msg == 0x0089:
+                self.check('wds bind data port: SIO port A2_MUX_RMNETn (0x0E04 + channel), u16', from_tlv(0x01) is not None and len(from_tlv(0x01)) == 2 and struct.unpack('<H', from_tlv(0x01))[0] >= 0x0E04)
+                return OK
             if msg == 0x00A2:
                 ep = from_tlv(0x10)
                 self.check('wds bind mux data port: endpoint BAM_DMUX(5), 8 bytes', ep is not None and len(ep) == 8 and ep[:4] == b'\x05\x00\x00\x00')
