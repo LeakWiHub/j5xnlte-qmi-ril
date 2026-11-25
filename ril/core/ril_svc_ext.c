@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -624,8 +625,16 @@ void ril_wda_setup(struct ril_qmi *r)
 void ril_wds_on_indication(struct ril_qmi *r, const qmi_msg_t *m)
 {
     qmi_span_t v;
+    uint8_t st;
     if (m->msg_id != WDS_PKT_STATUS_IND) return;
-    if (qmi_tlv_find(m->tlvs, 0x01, &v) == 1 && v.n >= 1) ril_ev_push(r, EV_DATA, v.p[0] == 2, NULL, 0);
+    /* Connection status (libqmi QmiWdsConnectionStatus): 0 unknown, 1 disconnected, 2 connected, 3 suspended,
+     * 4 authenticating. Only a real disconnect may tear the Android network down: 3/4 happen while the call is still
+     * alive (dormancy, re-auth) and treating them as "down" made Android drop a working session. */
+    if (qmi_tlv_find(m->tlvs, 0x01, &v) != 1 || v.n < 1) return;
+    st = v.p[0];
+    qmi_logf(QMI_LOG_INFO, "ril: WDS packet service status %u", st);
+    if (st == 1) ril_ev_push(r, EV_DATA, 0, NULL, 0);
+    else if (st == 2) ril_ev_push(r, EV_DATA, 1, NULL, 0);
 }
 
 static void ip_from_wire(uint8_t out[4], const uint8_t *wire) /* wire is the little endian u32 of the host-order address */
@@ -634,6 +643,14 @@ static void ip_from_wire(uint8_t out[4], const uint8_t *wire) /* wire is the lit
     out[1] = wire[2];
     out[2] = wire[1];
     out[3] = wire[0];
+}
+
+static unsigned ipv4_prefix(const uint8_t mask[4])
+{
+    unsigned i, b, n = 0;
+    for (i = 0; i < 4; i++)
+        for (b = 0; b < 8; b++) n += (mask[i] >> b) & 1;
+    return n;
 }
 
 int ril_data_find_iface(char *out, size_t cap)
@@ -691,6 +708,66 @@ static int iface_set(const char *ifname, int up, int mtu)
         if (want != ifr.ifr_flags) {
             ifr.ifr_flags = want;
             if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0) rc = -errno;
+        }
+    }
+    close(s);
+    return rc;
+}
+
+/* The IPv4 address of a cellular interface is configured by the RIL, not by the framework: ConnectivityService only
+ * installs the interface, routes and DNS (updateLinkProperties has no address step), so a HAL that merely reports the
+ * address leaves the link without one and nothing can be sent (seen on the real device: netd adds routes and DNS but
+ * "ip addr show wwan0" has no inet line, validation fails, and adding the address by hand makes the network work at
+ * once). Legacy vendor RILs do the same (reference-ril: "netcfg rmnet0 dhcp"). SIOCSIFADDR/SIOCSIFNETMASK do not
+ * disturb the routes that netd installs. */
+static int iface_ipv4_set(const char *ifname, const uint8_t ip[4], const uint8_t mask[4])
+{
+    struct ifreq ifr;
+    struct sockaddr_in *sin;
+    int s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0), rc = 0;
+    if (s < 0) return -errno;
+    memset(&ifr, 0, sizeof(ifr));
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+    /* Never touch a loopback: that is the host-test interface, and replacing 127.0.0.1 would break the test itself. */
+    if (ioctl(s, SIOCGIFFLAGS, &ifr) == 0 && (ifr.ifr_flags & IFF_LOOPBACK)) {
+        close(s);
+        return 0;
+    }
+    sin = (struct sockaddr_in *)&ifr.ifr_addr;
+    sin->sin_family = AF_INET;
+    memcpy(&sin->sin_addr, ip, 4);
+    if (ioctl(s, SIOCSIFADDR, &ifr) < 0) rc = -errno;
+    if (!rc) {
+        sin = (struct sockaddr_in *)&ifr.ifr_netmask;
+        sin->sin_family = AF_INET;
+        memcpy(&sin->sin_addr, mask, 4);
+        if (ioctl(s, SIOCSIFNETMASK, &ifr) < 0) rc = -errno;
+    }
+    close(s);
+    return rc;
+}
+
+/* Removes the address that this RIL put on the link when the data call ends, so a reconnect with a different IP does
+ * not leave a stale address behind (Android tears the network down but never removes the IFA for cellular). */
+static int iface_ipv4_del(const char *ifname)
+{
+    struct ifreq ifr, del;
+    struct sockaddr_in *sin;
+    int s = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0), rc = 0;
+    if (s < 0) return -errno;
+    memset(&ifr, 0, sizeof(ifr));
+    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifname);
+    if (ioctl(s, SIOCGIFFLAGS, &ifr) == 0 && (ifr.ifr_flags & IFF_LOOPBACK)) {
+        close(s);
+        return 0;
+    }
+    if (ioctl(s, SIOCGIFADDR, &ifr) == 0) {
+        sin = (struct sockaddr_in *)&ifr.ifr_addr;
+        if (sin->sin_family == AF_INET && sin->sin_addr.s_addr != 0) {
+            memset(&del, 0, sizeof(del));
+            snprintf(del.ifr_name, sizeof(del.ifr_name), "%s", ifname);
+            del.ifr_addr = ifr.ifr_addr;
+            if (ioctl(s, SIOCDIFADDR, &del) < 0) rc = -errno;
         }
     }
     close(s);
@@ -886,7 +963,6 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         memset(out, 0, sizeof(*out));
         return -ENODATA;
     }
-    /* Addresses and routes are applied by the framework (netd) from the HAL result; here the link is only brought up. */
     rc = iface_set(out->ifname, 1, out->mtu);
     if (rc) {
         qmi_logf(QMI_LOG_ERROR, "ril: cannot bring %s up: %d", out->ifname, rc);
@@ -894,6 +970,17 @@ int ril_data_start(ril_qmi_t *r, const ril_data_req_t *req, ril_data_call_t *out
         memset(out, 0, sizeof(*out));
         return rc;
     }
+    /* The framework installs the interface, routes and DNS but never the IPv4 address (only the vendor RIL does that),
+     * so configure it here. No mask from the modem: a /32 still works because netd installs the on-link route itself. */
+    if (!out->mask[0] && !out->mask[1] && !out->mask[2] && !out->mask[3])
+        memset(out->mask, 0xff, 4);
+    rc = iface_ipv4_set(out->ifname, out->ip, out->mask);
+    qmi_logf(rc ? QMI_LOG_ERROR : QMI_LOG_WARN, "ril: %s IPv4 %u.%u.%u.%u/%u configured -> %d", out->ifname,
+             out->ip[0], out->ip[1], out->ip[2], out->ip[3], ipv4_prefix(out->mask), rc);
+    fprintf(stderr, "ril: %s IPv4 %u.%u.%u.%u/%u configured -> %d\n", out->ifname,
+            out->ip[0], out->ip[1], out->ip[2], out->ip[3], ipv4_prefix(out->mask), rc);
+    /* Not fatal: the call itself is up, and a host build/test or a HAL without NET_ADMIN may not be allowed to do it. */
+    if (rc) qmi_logf(QMI_LOG_ERROR, "ril: cannot configure the IPv4 address of %s: %d", out->ifname, rc);
     return 0;
 }
 
@@ -905,7 +992,10 @@ int ril_data_stop(ril_qmi_t *r, uint32_t handle, const char *ifname)
     qmi_wbuf_init(&w, tl, sizeof(tl));
     qmi_tlv_put_u32(&w, 0x01, handle);
     rc = ril_svcw(r, QMI_SVC_WDS, WDS_STOP_NETWORK, &w, 30000, 0, NULL, 0, NULL);
-    if (ifname && *ifname) (void)iface_set(ifname, 0, 0);
+    if (ifname && *ifname) {
+        (void)iface_ipv4_del(ifname);
+        (void)iface_set(ifname, 0, 0);
+    }
     /* an already dead session (invalid handle / out of call) counts as stopped */
     if (QMI_E_IS_QMI(rc) && (QMI_E_CODE(rc) == QMI_ERR_INVALID_HANDLE || QMI_E_CODE(rc) == QMI_ERR_OUT_OF_CALL)) return 0;
     return rc;
@@ -935,7 +1025,7 @@ void ril_data_diag(ril_qmi_t *r, const char *ifname, const char *tag)
     }
     rc = ril_data_pkt_stats(r, st, sizeof(st), &n);
     o += (size_t)snprintf(line + o, sizeof(line) - o, " | modem WDS stats rc=%d:", rc);
-    for (i = 0; rc == 0 && i < n && i < 60 && o + 4 < sizeof(line); i++) o += (size_t)snprintf(line + o, sizeof(line) - o, "%02x", st[i]);
+    for (i = 0; rc == 0 && i < n && i < 96 && o + 4 < sizeof(line); i++) o += (size_t)snprintf(line + o, sizeof(line) - o, "%02x", st[i]);
     qmi_logf(QMI_LOG_WARN, "%s", line);
     fprintf(stderr, "%s\n", line);
 }

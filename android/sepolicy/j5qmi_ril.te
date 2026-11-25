@@ -13,7 +13,7 @@ allow j5qmi_ril qmi_device:chr_file rw_file_perms;
 # bringing the rmnet/wwan interface up and setting its MTU (SIOCGIFFLAGS/SIOCSIFFLAGS/SIOCSIFMTU on an AF_INET socket)
 allow j5qmi_ril self:capability net_admin;
 allow j5qmi_ril self:udp_socket create;
-allowxperm j5qmi_ril self:udp_socket ioctl { SIOCGIFFLAGS SIOCSIFFLAGS SIOCSIFMTU };
+allowxperm j5qmi_ril self:udp_socket ioctl { SIOCGIFFLAGS SIOCSIFFLAGS SIOCSIFMTU SIOCGIFADDR SIOCSIFADDR SIOCSIFNETMASK SIOCDIFADDR };
 # finding the interface under /sys/class/net
 allow j5qmi_ril sysfs_net:dir r_dir_perms;
 allow j5qmi_ril sysfs_net:lnk_file r_file_perms;
