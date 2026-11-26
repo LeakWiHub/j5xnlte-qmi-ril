@@ -9,6 +9,7 @@ NDK=${1:?NDK dir}; AIDL=${2:?aidl binary}; API=${3:?aidl_api dir}; OUT=${4:-buil
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$(mkdir -p "$OUT" && cd "$OUT" && pwd)
 LEVEL=34
+VER=${AIDL_VER:-1}   # Radio AIDL version: default 1 = vendor API 34 (Android 14); vendor API 35+ -> AIDL_VER=2..4
 BIN=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin
 CXX=$BIN/aarch64-linux-android${LEVEL}-clang++
 CC=$BIN/aarch64-linux-android${LEVEL}-clang
@@ -18,19 +19,20 @@ test -x "$AIDL" || { echo "no aidl at $AIDL"; exit 1; }
 
 PKGS="android.hardware.radio android.hardware.radio.config android.hardware.radio.data android.hardware.radio.messaging android.hardware.radio.modem android.hardware.radio.network android.hardware.radio.sim android.hardware.radio.voice"
 INC=()
-for p in $PKGS; do test -d "$API/$p/4" || { echo "missing $API/$p/4"; exit 1; }; INC+=(-I "$API/$p/4"); done
+for p in $PKGS; do test -d "$API/$p/$VER" || { echo "missing $API/$p/$VER"; exit 1; }; INC+=(-I "$API/$p/$VER"); done
 
 rm -rf "$OUT/gen" "$OUT/inc" "$OUT/obj"; mkdir -p "$OUT/gen" "$OUT/inc" "$OUT/obj"
 for p in $PKGS; do
-  hash=$(cat "$API/$p/4/.hash")
-  mapfile -t files < <(find "$API/$p/4" -name '*.aidl' | sort)
+  hash=$(cat "$API/$p/$VER/.hash")
+  mapfile -t files < <(find "$API/$p/$VER" -name '*.aidl' | sort)
   echo "== aidl $p: ${#files[@]} files, hash $hash"
-  "$AIDL" --lang=ndk --structured --stability=vintf --version 4 --hash "$hash" \
+  "$AIDL" --lang=ndk --structured --stability=vintf --version $VER --hash "$hash" \
       "${INC[@]}" -o "$OUT/gen" -h "$OUT/inc" "${files[@]}"
 done
 
-CFLAGS_COMMON=(-O2 -fPIE -Wall -Wno-unused-parameter -D__ANDROID_VENDOR__ -DANDROID_STRICT -Wno-deprecated-declarations)
-INCS=(-I"$OUT/inc" -I"$HERE/qmi/include" -I"$HERE/ril/core" -I"$HERE/hal/src" -I"$HERE/hal/gen")
+CFLAGS_COMMON=(-DJ5_AIDL_VER=$VER -O2 -fPIE -Wall -Wno-unused-parameter -D__ANDROID_VENDOR__ -DANDROID_STRICT -Wno-deprecated-declarations)
+mkdir -p "$OUT/base"; python3 "$HERE/tools/gen-hal-base/gen_hal_base.py" "$API" "$VER" "$OUT/base" >/dev/null
+INCS=(-I"$OUT/inc" -I"$HERE/qmi/include" -I"$HERE/ril/core" -I"$HERE/hal/src" -I"$OUT/base")
 SHIM=(-idirafter "$HERE/tools/ndk-shim")
 objs=()
 for f in "$HERE"/qmi/src/qmi_codec.c "$HERE"/qmi/src/qmi_dev.c "$HERE"/qmi/src/qmi_log.c \

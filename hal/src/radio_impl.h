@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Radio AIDL V4 HAL for the Samsung Galaxy J5 2016 (j5xnlte, MSM8916) on top of the userspace QMI stack.
 #pragma once
+#include "aidl_version.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -68,7 +69,9 @@ class RadioModemImpl : public RadioModemBase {
     explicit RadioModemImpl(Hal& h) : h_(h) {}
     ::ndk::ScopedAStatus getBasebandVersion(int32_t in_serial) override;
     ::ndk::ScopedAStatus getDeviceIdentity(int32_t in_serial) override;
+#if J5_AIDL_VER >= 2
     ::ndk::ScopedAStatus getImei(int32_t in_serial) override;
+#endif
     ::ndk::ScopedAStatus getHardwareConfig(int32_t in_serial) override;
     ::ndk::ScopedAStatus setRadioPower(int32_t in_serial, bool in_powerOn, bool in_forEmergencyCall,
                                        bool in_preferredForEmergencyCall) override;

@@ -70,17 +70,17 @@ radio::network::RegStateResult RadioNetworkImpl::regState(const ril_serving_t& s
         mnc = p.substr(3);
         r.registeredPlmn = p;
     }
-    int lac = s.lac_valid ? s.lac : RadioConst::VALUE_UNAVAILABLE;
-    int cid = s.cid_valid ? static_cast<int>(s.cid) : RadioConst::VALUE_UNAVAILABLE;
+    int lac = s.lac_valid ? s.lac : kValueUnavailable;
+    int cid = s.cid_valid ? static_cast<int>(s.cid) : kValueUnavailable;
     if (s.rat == RIL_RAT_LTE) {
         CellIdentityLte c;
         c.mcc = mcc;
         c.mnc = mnc;
         c.ci = cid;
-        c.pci = RadioConst::VALUE_UNAVAILABLE;
+        c.pci = kValueUnavailable;
         c.tac = lac;
-        c.earfcn = RadioConst::VALUE_UNAVAILABLE;
-        c.bandwidth = RadioConst::VALUE_UNAVAILABLE;
+        c.earfcn = kValueUnavailable;
+        c.bandwidth = kValueUnavailable;
         r.cellIdentity = CellIdentity::make<CellIdentity::Tag::lte>(c);
     } else if (s.rat == RIL_RAT_UMTS) {
         CellIdentityWcdma c;
@@ -88,8 +88,8 @@ radio::network::RegStateResult RadioNetworkImpl::regState(const ril_serving_t& s
         c.mnc = mnc;
         c.lac = lac;
         c.cid = cid;
-        c.psc = RadioConst::VALUE_UNAVAILABLE;
-        c.uarfcn = RadioConst::VALUE_UNAVAILABLE;
+        c.psc = kValueUnavailable;
+        c.uarfcn = kValueUnavailable;
         r.cellIdentity = CellIdentity::make<CellIdentity::Tag::wcdma>(c);
     } else if (s.rat == RIL_RAT_GSM) {
         CellIdentityGsm c;
@@ -97,8 +97,8 @@ radio::network::RegStateResult RadioNetworkImpl::regState(const ril_serving_t& s
         c.mnc = mnc;
         c.lac = lac;
         c.cid = cid;
-        c.arfcn = RadioConst::VALUE_UNAVAILABLE;
-        c.bsic = RadioConst::VALUE_UNAVAILABLE_BYTE;
+        c.arfcn = kValueUnavailable;
+        c.bsic = kValueUnavailableByte;
         r.cellIdentity = CellIdentity::make<CellIdentity::Tag::gsm>(c);
     }
     return r;
@@ -154,7 +154,7 @@ radio::network::RegStateResult RadioNetworkImpl::regState(const ril_serving_t& s
 
 radio::network::SignalStrength RadioNetworkImpl::signalFrom(const ril_signal_t& s) {
     radio::network::SignalStrength ss;
-    const int U = RadioConst::VALUE_UNAVAILABLE;
+    const int U = kValueUnavailable;
     /* every sub-structure starts "unavailable": the framework treats INT_MAX as "not reported" */
     ss.gsm.signalStrength = ss.gsm.bitErrorRate = ss.gsm.timingAdvance = U;
     ss.wcdma.signalStrength = ss.wcdma.bitErrorRate = ss.wcdma.rscp = ss.wcdma.ecno = U;
@@ -743,8 +743,8 @@ static radio::data::SetupDataCallResult resultFrom(const ril_data_call_t& d, int
     radio::data::LinkAddress la;
     la.address = ip(d.ip) + "/" + std::to_string(prefix ? prefix : 32);
     la.addressProperties = radio::data::LinkAddress::ADDRESS_PROPERTY_NONE;
-    la.deprecationTime = RadioConst::VALUE_UNAVAILABLE_LONG;
-    la.expirationTime = RadioConst::VALUE_UNAVAILABLE_LONG;
+    la.deprecationTime = kValueUnavailableLong;
+    la.expirationTime = kValueUnavailableLong;
     r.addresses.push_back(la);
     if (d.has_gw) r.gateways.push_back(ip(d.gw));
     if (d.has_dns1) r.dnses.push_back(ip(d.dns1));

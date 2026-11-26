@@ -263,6 +263,7 @@ void RadioModemImpl::onResponseFunctionsSet() {
     return ::ndk::ScopedAStatus::ok();
 }
 
+#if J5_AIDL_VER >= 2
 ::ndk::ScopedAStatus RadioModemImpl::getImei(int32_t serial) {
     REQUIRE_RESP(resp);
     h_.exec.post([this, resp, serial] {
@@ -277,6 +278,7 @@ void RadioModemImpl::onResponseFunctionsSet() {
     });
     return ::ndk::ScopedAStatus::ok();
 }
+#endif
 
 ::ndk::ScopedAStatus RadioModemImpl::getHardwareConfig(int32_t serial) {
     REQUIRE_RESP(resp);
@@ -372,7 +374,9 @@ void RadioConfigImpl::notifySlotsChanged() {
     pc.maxActiveInternetData = 1;
     pc.isInternetLingeringSupported = false;
     pc.logicalModemIds = {0};
+#if J5_AIDL_VER >= 3
     pc.maxActiveVoice = 1;
+#endif
     resp->getPhoneCapabilityResponse(rspInfo(serial), pc);
     return ::ndk::ScopedAStatus::ok();
 }
