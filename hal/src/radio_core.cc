@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // IRadioConfig, IRadioModem, IRadioSim.
 #define LOG_TAG "j5xnlte-ril"
+#include <mutex>
 #include <android/log.h>
 
 #include <algorithm>
@@ -17,6 +18,34 @@ using radio::RadioIndicationType;
     if (!r) return ::ndk::ScopedAStatus::ok()
 
 /* ================================================================== IRadioSim */
+/* ICCID: Android 15 creates no subscription (subId=-1, "no valid subs") when CardStatus.iccid is empty. First DMS 0x3C, then
+ * EF_ICCID (2FE2 under 3F00) through UIM Read Transparent; nibble-swapped BCD, 'F' padding stripped. A good value is cached. */
+static std::string readIccid(ril_qmi_t* ril) {
+    static std::mutex mu;
+    static std::string cached;
+    std::lock_guard<std::mutex> lk(mu);
+    char buf[40];
+    int rc1 = ril_sim_iccid(ril, buf, sizeof(buf));
+    if (rc1 == 0 && buf[0]) { cached = buf; return cached; }
+    ril_icc_result_t r;
+    static const uint8_t path[] = {0x3F, 0x00};
+    int rc2 = ril_sim_read_transparent(ril, 0x2FE2, path, sizeof(path), 0, 10, &r);
+    if (rc2 == 0 && r.len >= 8 && r.sw1 == 0x90) {
+        std::string out;
+        for (size_t i = 0; i < r.len && i < 10; i++) {
+            for (int nib : {r.data[i] & 0x0F, r.data[i] >> 4}) {
+                if (nib > 9) goto done;
+                out.push_back(static_cast<char>('0' + nib));
+            }
+        }
+    done:
+        if (!out.empty()) { cached = out; return cached; }
+    }
+    fprintf(stderr, "hal: ICCID unavailable (dms rc=%d, uim rc=%d sw=%02x%02x len=%zu), %s\n", rc1, rc2, r.sw1, r.sw2, r.len,
+            cached.empty() ? "empty" : "using cached");
+    return cached;
+}
+
 bool RadioSimImpl::cardStatus(radio::sim::CardStatus* out, RadioError* err) {
     using namespace radio::sim;
     *err = RadioError::NONE;
@@ -58,8 +87,7 @@ bool RadioSimImpl::cardStatus(radio::sim::CardStatus* out, RadioError* err) {
         cs.applications.push_back(a);
         cs.gsmUmtsSubscriptionAppIndex = 0;
         if (a.appState == AppStatus::APP_STATE_READY) {
-            char iccid[32];
-            if (ril_sim_iccid(h_.ril, iccid, sizeof(iccid)) == 0) cs.iccid = iccid;
+            cs.iccid = readIccid(h_.ril);
         }
     }
     *out = cs;
