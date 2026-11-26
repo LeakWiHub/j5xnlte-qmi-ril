@@ -23,7 +23,7 @@ for p in $PKGS; do test -d "$API/$p/$VER" || { echo "missing $API/$p/$VER"; exit
 
 rm -rf "$OUT/gen" "$OUT/inc" "$OUT/obj"; mkdir -p "$OUT/gen" "$OUT/inc" "$OUT/obj"
 for p in $PKGS; do
-  hash=$(cat "$API/$p/$VER/.hash")
+  hash=$(grep -v "^[[:space:]]*$" "$API/$p/$VER/.hash" | tail -n1 | tr -d "[:space:]")
   mapfile -t files < <(find "$API/$p/$VER" -name '*.aidl' | sort)
   echo "== aidl $p: ${#files[@]} files, hash $hash"
   "$AIDL" --lang=ndk --structured --stability=vintf --version $VER --hash "$hash" \
